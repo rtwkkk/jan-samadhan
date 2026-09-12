@@ -230,6 +230,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: '#064477', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ID: {c._id?.slice(-8).toUpperCase()}</span>
             <StatusBadge status={c.status} />
+            {c.source && <span style={{ background: c.source === 'WHATSAPP' ? '#dcfce7' : c.source === 'VOICE' ? '#fef0cf' : '#dbeafe', color: c.source === 'WHATSAPP' ? '#166534' : c.source === 'VOICE' ? '#ae7200' : '#1e40af', padding: '4px 10px', borderRadius: '3px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px' }}>{c.source === 'WHATSAPP' ? '📱 WhatsApp' : c.source === 'VOICE' ? '📞 Voice' : '🌐 Web'}</span>}
             {c.urgencySeverity && <span style={{ background: (c.urgencySeverity === 'High' || c.urgencySeverity === 'Critical') ? '#fde7e5' : '#fef0cf', color: (c.urgencySeverity === 'High' || c.urgencySeverity === 'Critical') ? '#c4241e' : '#ae7200', padding: '4px 10px', borderRadius: '3px', fontSize: '12px', fontWeight: 600 }}>{c.urgencySeverity} Priority</span>}
           </div>
 

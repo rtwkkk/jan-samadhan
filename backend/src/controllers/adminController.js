@@ -2,6 +2,7 @@ const Challenge = require('../models/Challenge');
 const Institution = require('../models/Institution');
 const Notification = require('../models/Notification');
 const { canTransition } = require('../utils/statusTransition');
+const whatsappNotification = require('../services/whatsapp/whatsappNotification.service');
 
 // Helper for formatting time elapsed
 const timeSince = (date) => {
@@ -153,6 +154,11 @@ const assignChallenge = async (req, res) => {
       console.error('Notification failed:', notifErr);
     }
 
+    // Send WhatsApp notification if complaint originated from WhatsApp
+    whatsappNotification.sendStatusNotification(challenge, 'assigned', {
+      institutionName: institution.name
+    }).catch(err => console.error('WhatsApp notification failed:', err.message));
+
     res.json({ message: 'Challenge assigned successfully', challenge });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -257,6 +263,12 @@ const updateChallengeStatus = async (req, res) => {
     } catch (notifErr) {
       console.error('Notification failed:', notifErr);
     }
+
+    // Send WhatsApp notification if complaint originated from WhatsApp
+    whatsappNotification.sendStatusNotification(challenge, status, {
+      reason: reason,
+      message: req.body.message
+    }).catch(err => console.error('WhatsApp notification failed:', err.message));
 
     res.json({ message: `Challenge marked as ${status}`, challenge });
   } catch (error) {

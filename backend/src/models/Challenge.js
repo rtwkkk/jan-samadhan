@@ -77,6 +77,14 @@ const challengeSchema = new mongoose.Schema({
       message: 'You must consent to sharing contact details.'
     }
   },
+  source: {
+    type: String,
+    enum: ['WEB', 'VOICE', 'WHATSAPP'],
+    default: 'WEB'
+  },
+  whatsappPhone: {
+    type: String
+  },
   status: {
     type: String,
     enum: ['submitted', 'under_review', 'information_requested', 'verified', 'assigned', 'in_progress', 'resolved', 'rejected'],

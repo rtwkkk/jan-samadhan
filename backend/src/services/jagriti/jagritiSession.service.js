@@ -204,7 +204,8 @@ async function processSession(voiceData) {
       consent: true,
       status: 'submitted',
       aiAnalysisStatus: 'completed',
-      aiConfidence: aiResult.confidence
+      aiConfidence: aiResult.confidence,
+      source: 'VOICE'
     });
   } catch (err) {
     draft.processingStatus = 'failed';

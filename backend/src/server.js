@@ -16,7 +16,11 @@ connectDB().then(() => {
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(cors());
 
 // Routes
@@ -28,6 +32,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/university', require('./routes/universityRoutes'));
 app.use('/api/industry', require('./routes/industryRoutes'));
+app.use('/api/whatsapp', require('./routes/whatsappRoutes'));
 
 // Static folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
