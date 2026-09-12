@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   daysAgoStart,
   DOW_SHORT_MON_FIRST,
@@ -25,93 +24,51 @@ import type {
 // heavy aggregations to SQL RPCs. Noted in the PR.
 // ------------------------------------------------------------
 
-type DB = SupabaseClient
 
 // --- 1. Metric cards ---------------------------------------------------
 
-export async function loadMetrics(db: DB): Promise<MetricsBundle> {
+export async function loadMetrics(db: any): Promise<MetricsBundle> {
   const todayStart = startOfLocalDay().toISOString()
   const yesterdayStart = daysAgoStart(1).toISOString()
 
-  const [
-    openConvCur,
-    newConvToday,
-    newConvYesterday,
-    newContactsToday,
-    newContactsYesterday,
-    openDeals,
-    messagesToday,
-    messagesYesterday,
-  ] = await Promise.all([
-    db.from('conversations').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-    db
-      .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'open')
-      .gte('created_at', todayStart),
-    db
-      .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'open')
-      .gte('created_at', yesterdayStart)
-      .lt('created_at', todayStart),
-    db.from('contacts').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
-    db
-      .from('contacts')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', yesterdayStart)
-      .lt('created_at', todayStart),
-    db.from('deals').select('value, status').eq('status', 'open'),
-    db
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('sender_type', 'agent')
-      .gte('created_at', todayStart),
-    db
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('sender_type', 'agent')
-      .gte('created_at', yesterdayStart)
-      .lt('created_at', todayStart),
+  const [analytics, contactsStatsRes] = await Promise.all([
+    fetch(`/api/dashboard/analytics?action=metrics&todayStart=${encodeURIComponent(todayStart)}&yesterdayStart=${encodeURIComponent(yesterdayStart)}`)
+      .then((res) => (res.ok ? res.json() : null)),
+    fetch('/api/dashboard/contacts?action=stats').then((res) => (res.ok ? res.json() : null)),
   ])
 
-  const openDealsRows = (openDeals.data ?? []) as { value: number | null }[]
-  const openDealsValue = openDealsRows.reduce((sum, d) => sum + (d.value ?? 0), 0)
+  const openDealsValue = analytics?.openDealsValue ?? 0
+  const openDealsCount = analytics?.openDealsCount ?? 0
 
   return {
     activeConversations: {
-      current: openConvCur.count ?? 0,
-      // "vs yesterday" on a current-state count has no clean answer
-      // without snapshots — we show the delta in NEW open conversations
-      // today vs yesterday. That's the business-meaningful daily signal.
-      previous: (newConvToday.count ?? 0) - (newConvYesterday.count ?? 0),
+      current: analytics?.openConvCur ?? 0,
+      previous: (analytics?.newConvToday ?? 0) - (analytics?.newConvYesterday ?? 0),
     },
     newContactsToday: {
-      current: newContactsToday.count ?? 0,
-      previous: newContactsYesterday.count ?? 0,
+      current: contactsStatsRes?.contactsToday ?? 0,
+      previous: contactsStatsRes?.contactsYesterday ?? 0,
     },
     openDealsValue,
-    openDealsCount: openDealsRows.length,
+    openDealsCount,
     messagesSentToday: {
-      current: messagesToday.count ?? 0,
-      previous: messagesYesterday.count ?? 0,
+      current: analytics?.messagesToday ?? 0,
+      previous: analytics?.messagesYesterday ?? 0,
     },
   }
 }
 
-// --- 2. Conversations over time ---------------------------------------
+// --- 2. Conversations series -------------------------------------------
 
 export async function loadConversationsSeries(
-  db: DB,
+  db: any,
   rangeDays: number,
 ): Promise<ConversationsSeriesPoint[]> {
   const start = daysAgoStart(rangeDays - 1).toISOString()
-  const { data, error } = await db
-    .from('messages')
-    .select('created_at, sender_type')
-    .gte('created_at', start)
-    .order('created_at', { ascending: true })
-  if (error) throw error
+  
+  const res = await fetch(`/api/dashboard/analytics?action=messagesSeries&gte=${encodeURIComponent(start)}`);
+  if (!res.ok) throw new Error('Failed to load conversations series');
+  const data = await res.json();
 
   const keys = lastNDayKeys(rangeDays)
   const buckets = new Map<string, { incoming: number; outgoing: number }>()
@@ -130,15 +87,13 @@ export async function loadConversationsSeries(
 
 // --- 3. Pipeline donut -------------------------------------------------
 
-export async function loadPipelineDonut(db: DB): Promise<PipelineDonutData> {
-  const [stagesRes, dealsRes] = await Promise.all([
-    db.from('pipeline_stages').select('id, name, color, pipeline_id, position').order('position'),
-    db.from('deals').select('stage_id, value, status').eq('status', 'open'),
-  ])
+export async function loadPipelineDonut(db: any): Promise<PipelineDonutData> {
+  const res = await fetch('/api/dashboard/analytics?action=pipelineDonut');
+  if (!res.ok) throw new Error('Failed to load pipeline donut');
+  const data = await res.json();
 
-  const stages =
-    (stagesRes.data ?? []) as { id: string; name: string; color: string }[]
-  const deals = (dealsRes.data ?? []) as { stage_id: string; value: number | null }[]
+  const stages = data.stages || [];
+  const deals = data.deals || [];
 
   const byStage = new Map<string, { count: number; total: number }>()
   for (const d of deals) {
@@ -149,40 +104,29 @@ export async function loadPipelineDonut(db: DB): Promise<PipelineDonutData> {
   }
 
   const slices: PipelineStageSlice[] = stages
-    .map((s) => ({
+    .map((s: any) => ({
       id: s.id,
       name: s.name,
       color: s.color || '#64748b',
       dealCount: byStage.get(s.id)?.count ?? 0,
       totalValue: byStage.get(s.id)?.total ?? 0,
     }))
-    // Hide empty stages from the ring (but we'd still show them in the
-    // legend if the user wanted a full breakdown — trimming keeps the
-    // visual clean for the common case).
-    .filter((s) => s.totalValue > 0 || s.dealCount > 0)
+    .filter((s: any) => s.totalValue > 0 || s.dealCount > 0)
 
   return {
     stages: slices,
-    totalValue: slices.reduce((sum, s) => sum + s.totalValue, 0),
+    totalValue: slices.reduce((sum: number, s: any) => sum + s.totalValue, 0),
   }
 }
 
 // --- 4. Response time by day of week ----------------------------------
 
-export async function loadResponseTime(db: DB): Promise<ResponseTimeSummary> {
-  // Pull the last 14 days of messages in one shot, then walk per
-  // conversation to find each "first inbound" → "first subsequent
-  // outbound" pair. 14 days gives us both "this week" + "last week"
-  // with enough overlap if the user opens the dashboard late on a
-  // Monday.
+export async function loadResponseTime(db: any): Promise<ResponseTimeSummary> {
   const fourteenDaysAgo = daysAgoStart(13).toISOString()
-  const { data, error } = await db
-    .from('messages')
-    .select('conversation_id, sender_type, created_at')
-    .gte('created_at', fourteenDaysAgo)
-    .order('conversation_id', { ascending: true })
-    .order('created_at', { ascending: true })
-  if (error) throw error
+  
+  const res = await fetch(`/api/dashboard/analytics?action=messagesSeries&gte=${encodeURIComponent(fourteenDaysAgo)}`);
+  if (!res.ok) throw new Error('Failed to load response time');
+  const data = await res.json();
 
   const rows = (data ?? []) as {
     conversation_id: string
@@ -220,9 +164,6 @@ export async function loadResponseTime(db: DB): Promise<ResponseTimeSummary> {
   const thisWeekStart = daysAgoStart(mondayIndex(now))
   const lastWeekStart = daysAgoStart(mondayIndex(now) + 7)
 
-  // Per-day-of-week buckets, averaged over both weeks' worth of data
-  // so each bar has more samples to stand on. If a day has no samples
-  // its avgMinutes stays null and the chart renders the bar muted.
   const byDow = new Map<number, number[]>()
   for (let i = 0; i < 7; i++) byDow.set(i, [])
   const thisWeekMins: number[] = []
@@ -252,8 +193,6 @@ export async function loadResponseTime(db: DB): Promise<ResponseTimeSummary> {
     }
   })
 
-  // Silence unused-label warnings — keep the arrays explicitly named
-  // for readability above.
   void DOW_SHORT_MON_FIRST
 
   return {
@@ -265,44 +204,20 @@ export async function loadResponseTime(db: DB): Promise<ResponseTimeSummary> {
 
 // --- 5. Activity feed --------------------------------------------------
 
-export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> {
-  // Pull ~10 from each source (plenty of headroom after merge-sort),
-  // then interleave by timestamp. The individual per-table limits
-  // keep the payload small; the final limit is enforced after sort.
-  const [msgs, contacts, deals, broadcasts, autoLogs] = await Promise.all([
-    db
-      .from('messages')
-      .select('id, content_text, sender_type, created_at, conversation_id, conversations(contact_id, contacts(name, phone))')
-      .eq('sender_type', 'customer')
-      .order('created_at', { ascending: false })
-      .limit(10),
-    db
-      .from('contacts')
-      .select('id, name, phone, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10),
-    db
-      .from('deals')
-      .select('id, title, updated_at, stage:pipeline_stages(name)')
-      .order('updated_at', { ascending: false })
-      .limit(10),
-    db
-      .from('broadcasts')
-      .select('id, name, status, total_recipients, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5),
-    db
-      .from('automation_logs')
-      .select('id, trigger_event, status, created_at, automation:automations(name), contact:contacts(name, phone)')
-      .order('created_at', { ascending: false })
-      .limit(10),
+export async function loadActivity(db: any, limit = 20): Promise<ActivityItem[]> {
+  const [msgs, contactsRes, dealsRes, broadcasts, autoLogs] = await Promise.all([
+    fetch('/api/dashboard/analytics?action=recentMessages').then((res) => (res.ok ? res.json() : [])),
+    fetch('/api/dashboard/contacts?action=recent').then((res) => (res.ok ? res.json() : [])),
+    fetch('/api/dashboard/analytics?action=recentDeals').then((res) => (res.ok ? res.json() : [])),
+    fetch('/api/dashboard/analytics?action=recentBroadcasts').then((res) => (res.ok ? res.json() : [])),
+    fetch('/api/dashboard/analytics?action=recentAutomationLogs').then((res) => (res.ok ? res.json() : [])),
   ])
 
   const items: ActivityItem[] = []
 
   // PostgREST returns nested selections as arrays by default, even when
   // the foreign key is 1:1. We normalise by taking [0] on each level.
-  for (const m of (msgs.data ?? []) as unknown as Array<{
+  for (const m of (msgs ?? []) as unknown as Array<{
     id: string
     content_text: string | null
     created_at: string
@@ -324,7 +239,7 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     })
   }
 
-  for (const c of (contacts.data ?? []) as Array<{ id: string; name: string | null; phone: string; created_at: string }>) {
+  for (const c of (contactsRes ?? []) as Array<{ id: string; name: string | null; phone: string; created_at: string }>) {
     items.push({
       id: `contact-${c.id}`,
       kind: 'contact',
@@ -334,18 +249,17 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     })
   }
 
-  for (const d of (deals.data ?? []) as unknown as Array<{
+  for (const d of (dealsRes ?? []) as Array<{
     id: string
     title: string
     updated_at: string
-    stage: { name: string }[] | { name: string } | null
+    stage: { name: string } | null
   }>) {
-    const stage = Array.isArray(d.stage) ? d.stage[0] : d.stage
     items.push({
       id: `deal-${d.id}`,
       kind: 'deal',
-      text: stage?.name
-        ? `Deal "${d.title}" in ${stage.name}`
+      text: d.stage?.name
+        ? `Deal "${d.title}" in ${d.stage.name}`
         : `Deal "${d.title}" updated`,
       at: d.updated_at,
       href: '/pipelines',

@@ -1,23 +1,29 @@
 import { NextResponse } from 'next/server'
 import { getCurrentAccount, requireRole, toErrorResponse } from '@/lib/auth/account'
-import { supabaseAdmin } from '@/lib/automations/admin-client'
+import { connectToDatabase } from '@/lib/mongodb/client'
+import { QuickReplyRepository } from '@/lib/mongodb/repositories/QuickReplyRepository'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
-
-// Quick replies — reusable snippets (plain text or a saved interactive
-// message) shared across the account. GET lists; POST creates. Mirrors
-// the automations route: RLS-scoped read via the user client, service-
-// role write after an explicit role check.
 
 export async function GET() {
   try {
-    const { supabase } = await getCurrentAccount()
-    // RLS (quick_replies_select) scopes to the caller's account.
-    const { data, error } = await supabase
-      .from('quick_replies')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ quick_replies: data ?? [] })
+    const ctx = await getCurrentAccount()
+    await connectToDatabase()
+
+    const docs = await QuickReplyRepository.findByAccountId(ctx.accountId)
+    
+    const quick_replies = docs.map(d => ({
+      id: d._id,
+      account_id: d.accountId,
+      user_id: d.userId,
+      title: d.title,
+      kind: d.kind,
+      content_text: d.contentText,
+      interactive_payload: d.interactivePayload,
+      created_at: d.createdAt.toISOString(),
+      updated_at: d.updatedAt.toISOString(),
+    }))
+
+    return NextResponse.json({ quick_replies })
   } catch (err) {
     return toErrorResponse(err)
   }
@@ -40,15 +46,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
   }
 
-  let content_text: string | null = null
-  let interactive_payload: unknown = null
+  let contentText: string | null = null
+  let interactivePayload: unknown = null
 
   if (kind === 'interactive') {
     const result = validateInteractivePayload(body.interactive_payload)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
-    interactive_payload = body.interactive_payload
+    interactivePayload = body.interactive_payload
   } else {
     const text = typeof body.content_text === 'string' ? body.content_text : ''
     if (!text.trim()) {
@@ -57,24 +63,32 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
-    content_text = text
+    contentText = text
   }
 
-  const { data, error } = await supabaseAdmin()
-    .from('quick_replies')
-    .insert({
-      account_id: ctx.accountId,
-      user_id: ctx.userId,
+  try {
+    await connectToDatabase()
+    const doc = await QuickReplyRepository.create(ctx.accountId, ctx.userId, {
       title,
       kind,
-      content_text,
-      interactive_payload,
+      contentText,
+      interactivePayload,
     })
-    .select()
-    .single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const quick_reply = {
+      id: doc._id,
+      account_id: doc.accountId,
+      user_id: doc.userId,
+      title: doc.title,
+      kind: doc.kind,
+      content_text: doc.contentText,
+      interactive_payload: doc.interactivePayload,
+      created_at: doc.createdAt.toISOString(),
+      updated_at: doc.updatedAt.toISOString(),
+    }
+
+    return NextResponse.json({ quick_reply }, { status: 201 })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
-  return NextResponse.json({ quick_reply: data }, { status: 201 })
 }

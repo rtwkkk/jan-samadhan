@@ -4,6 +4,7 @@ import {
   DEFAULT_CURRENCY,
   formatCurrency,
   formatCurrencyShort,
+  resolveDisplayCurrency,
 } from "./currency";
 
 describe("formatCurrency", () => {
@@ -61,5 +62,34 @@ describe("formatCurrencyShort", () => {
 
   it("falls back to the code prefix for unknown currencies (no throw)", () => {
     expect(formatCurrencyShort(1_000, "ZZZ")).toBe("ZZZ 1.0k");
+  });
+});
+
+describe('resolveDisplayCurrency', () => {
+  
+  it('returns default currency for empty deals', () => {
+    expect(resolveDisplayCurrency([], 'USD')).toBe('USD');
+  });
+
+  it('returns deal currency if all deals share it', () => {
+    expect(resolveDisplayCurrency([{ currency: 'INR' }, { currency: 'INR' }], 'USD')).toBe('INR');
+  });
+
+  it('returns the most common currency in mixed deals', () => {
+    const deals = [
+      { currency: 'INR' },
+      { currency: 'USD' },
+      { currency: 'INR' },
+    ];
+    expect(resolveDisplayCurrency(deals, 'EUR')).toBe('INR');
+  });
+
+  it('falls back to default currency for deals without currency', () => {
+    const deals = [
+      {},
+      {},
+      { currency: 'EUR' }
+    ];
+    expect(resolveDisplayCurrency(deals, 'USD')).toBe('USD'); // 2 USD, 1 EUR
   });
 });

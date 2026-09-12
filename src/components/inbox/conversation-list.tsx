@@ -1,12 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
-import {
-  CONVERSATION_SELECT,
-  matchesContactFilters,
-  normalizeConversations,
-} from "@/lib/inbox/conversations";
+
+import { matchesContactFilters } from "@/lib/inbox/conversations";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
@@ -91,49 +87,54 @@ export function ConversationList({
   });
 
   useEffect(() => {
-    const supabase = createClient();
     let cancelled = false;
 
     (async () => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(CONVERSATION_SELECT)
-        .order("last_message_at", { ascending: false });
-
-      if (cancelled) return;
-
-      if (error) {
-        // Supabase errors have non-enumerable properties — log fields explicitly
-        console.error("Failed to fetch conversations:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-        setLoading(false);
-        return;
+      let allData: any[] = [];
+      let cursor = '';
+      try {
+        while (true) {
+          const res = await fetch(`/api/v1/conversations?limit=100${cursor ? '&cursor=' + cursor : ''}`);
+          if (!res.ok) throw new Error('Failed to fetch conversations: ' + res.status);
+          const json = await res.json();
+          if (cancelled) return;
+          
+          allData = allData.concat(json.data || []);
+          if (json.meta && json.meta.next_cursor) {
+            cursor = json.meta.next_cursor;
+          } else {
+            break;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
       }
 
-      onConversationsLoadedRef.current(normalizeConversations(data ?? []));
-      setLoading(false);
+      if (!cancelled) {
+        onConversationsLoadedRef.current(allData);
+        setLoading(false);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-    // `resyncToken` is included so the parent can force a refetch when
-    // the realtime channel reconnects or the tab regains focus — catches
-    // up on any events sent while the WS was disconnected or throttled.
   }, [resyncToken]);
 
   // Tag definitions for the filter picker — loaded once so labels/colours
   // stay stable regardless of which conversations happen to be loaded.
   useEffect(() => {
-    const supabase = createClient();
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("tags").select("*").order("name");
-      if (!cancelled && data) setTags(data as Tag[]);
+      try {
+        const res = await fetch('/api/tags');
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data) setTags(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tags', error);
+      }
     })();
     return () => {
       cancelled = true;

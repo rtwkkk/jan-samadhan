@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
+import { ContactRepository } from "@/lib/mongodb/repositories/ContactRepository";
+
+vi.mock("@/lib/mongodb/repositories/ContactRepository");
+vi.mock("@/lib/mongodb/client", () => ({ connectToDatabase: vi.fn().mockResolvedValue(true) }));
 import {
   dedupeByPhone,
   findExistingContact,
@@ -35,8 +38,8 @@ describe("isExactMatch", () => {
 });
 
 describe("isUniqueViolation", () => {
-  it("detects Postgres 23505", () => {
-    expect(isUniqueViolation({ code: "23505" })).toBe(true);
+  it("detects MongoDB 11000", () => {
+    expect(isUniqueViolation({ code: 11000 })).toBe(true);
   });
   it("is false for other errors / non-objects", () => {
     expect(isUniqueViolation({ code: "23502" })).toBe(false);
@@ -67,31 +70,26 @@ describe("dedupeByPhone", () => {
 });
 
 describe("findExistingContact", () => {
-  // Minimal SupabaseClient stub: resolves the .from().select().eq().like()
+  // Minimal any stub: resolves the .from().select().eq().like()
   // chain to a fixed candidate set.
-  function stubDb(rows: Array<{ id: string; phone: string }>): SupabaseClient {
-    const builder = {
-      select: () => builder,
-      eq: () => builder,
-      like: () => Promise.resolve({ data: rows, error: null }),
-    };
-    return { from: () => builder } as unknown as SupabaseClient;
+  function stubDb(rows: Array<{ id: string; phone: string }>) {
+    (ContactRepository.findByPhoneSuffix as any).mockResolvedValue(rows.map(r => ({ _id: r.id, phone: r.phone })));
   }
 
   it("returns a trunk-variant match via phonesMatch", async () => {
-    const db = stubDb([{ id: "c1", phone: "37063949836" }]);
-    const hit = await findExistingContact(db, "acct", "+370 063 949 836");
+    stubDb([{ id: "c1", phone: "37063949836" }]);
+    const hit = await findExistingContact("acct", "+370 063 949 836");
     expect(hit?.id).toBe("c1");
   });
 
   it("returns null when no candidate matches", async () => {
-    const db = stubDb([{ id: "c1", phone: "15559999999" }]);
-    const hit = await findExistingContact(db, "acct", "+1 555-123-4567");
+    stubDb([{ id: "c1", phone: "15559999999" }]);
+    const hit = await findExistingContact("acct", "+1 555-123-4567");
     expect(hit).toBeNull();
   });
 
   it("returns null for an empty phone without querying", async () => {
-    const db = stubDb([{ id: "c1", phone: "15551234567" }]);
-    expect(await findExistingContact(db, "acct", "   ")).toBeNull();
+    stubDb([{ id: "c1", phone: "15551234567" }]);
+    expect(await findExistingContact("acct", "   ")).toBeNull();
   });
 });

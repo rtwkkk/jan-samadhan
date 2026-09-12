@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import {
-  ForbiddenError,
-  UnauthorizedError,
-  requireRole,
-  toErrorResponse,
-} from '@/lib/auth/account'
+import { WhatsappConfigRepository } from '@/lib/mongodb/repositories/WhatsappConfigRepository'
+import { MessageTemplateRepository } from '@/lib/mongodb/repositories/MessageTemplateRepository'
+import { getCurrentAccount } from '@/lib/auth/account'
+import { ForbiddenError, UnauthorizedError, requireRole, toErrorResponse } from '@/lib/auth/account'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import { normalizeStatus } from '@/lib/whatsapp/template-status-normalize'
 import type { TemplateButton, TemplateSampleValues } from '@/types'
@@ -129,160 +127,87 @@ function extractSampleValues(
 
 export async function POST() {
   try {
-    // Syncing rewrites the account-wide template catalog, which is
-    // settings-class data: `canEditSettings` and the message_templates
-    // insert/update RLS policies (migration 017) both require 'admin'.
-    // Resolving account_id off the profile only proved membership.
-    const { supabase, accountId, userId } = await requireRole('admin')
-
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('*')
-      .eq('account_id', accountId)
-      .single()
-
-    if (configError || !config) {
-      return NextResponse.json(
-        {
-          error:
-            'WhatsApp not configured. Connect your WhatsApp Business account in Settings first.',
-        },
-        { status: 400 },
-      )
+    let accountId;
+    let userId;
+    try {
+      const ctx = await getCurrentAccount();
+      accountId = ctx.accountId;
+      userId = ctx.userId;
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!config.waba_id) {
+    const config = await WhatsappConfigRepository.findByAccountId(accountId);
+    if (!config || !config.wabaId) {
       return NextResponse.json(
-        {
-          error:
-            'WABA (WhatsApp Business Account) ID missing. Re-connect your account in Settings.',
-        },
+        { error: 'WhatsApp not configured or missing WABA ID.' },
         { status: 400 },
-      )
+      );
     }
 
-    const accessToken = decrypt(config.access_token)
-
-    const metaTemplates: MetaTemplate[] = []
-    let nextUrl:
-      | string
-      | null = `${META_API_BASE}/${config.waba_id}/message_templates?limit=100&fields=id,name,language,status,category,components,quality_score`
-    const PAGE_CAP = 20
-    let pageCount = 0
+    const accessToken = decrypt(config.accessToken);
+    const metaTemplates = [];
+    let nextUrl = `${META_API_BASE}/${config.wabaId}/message_templates?limit=100`;
+    let pageCount = 0;
+    const PAGE_CAP = 10;
 
     while (nextUrl && pageCount < PAGE_CAP) {
-      pageCount++
-      const metaRes: Response = await fetch(nextUrl, {
+      pageCount++;
+      const metaRes = await fetch(nextUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
-      })
-
+      });
       if (!metaRes.ok) {
-        let metaErr = `Meta API error: ${metaRes.status}`
-        try {
-          const body = await metaRes.json()
-          if (body?.error?.message) metaErr = body.error.message
-        } catch {
-          // response wasn't JSON — keep the fallback
-        }
-        return NextResponse.json({ error: metaErr }, { status: 502 })
+        const errorText = await metaRes.text();
+        console.error('Meta API error fetching templates:', errorText);
+        throw new Error('Failed to fetch templates from Meta API.');
       }
-
-      const metaBody: {
-        data?: MetaTemplate[]
-        paging?: { next?: string }
-      } = await metaRes.json()
-      if (metaBody.data) metaTemplates.push(...metaBody.data)
-      nextUrl = metaBody.paging?.next ?? null
+      const metaBody = await metaRes.json();
+      if (metaBody.data) metaTemplates.push(...metaBody.data);
+      nextUrl = metaBody.paging?.next ?? null;
     }
 
-    let inserted = 0
-    let updated = 0
-    const errors: { name: string; language: string; message: string }[] = []
+    let inserted = 0;
+    let updated = 0;
+    const errors = [];
 
     for (const t of metaTemplates) {
-      const body = (t.components ?? []).find((c) => c.type === 'BODY')
-      const header = (t.components ?? []).find((c) => c.type === 'HEADER')
-      const footer = (t.components ?? []).find((c) => c.type === 'FOOTER')
-      const buttons = (t.components ?? []).find((c) => c.type === 'BUTTONS')
+      const body = (t.components ?? []).find((c: any) => c.type === 'BODY');
+      const header = (t.components ?? []).find((c: any) => c.type === 'HEADER');
+      const footer = (t.components ?? []).find((c: any) => c.type === 'FOOTER');
+      const buttons = (t.components ?? []).find((c: any) => c.type === 'BUTTONS');
 
-      const parsedButtons = parseButtons(buttons?.buttons)
-      const sampleValues = extractSampleValues(body, header)
+      const parsedButtons = parseButtons(buttons?.buttons);
+      const sampleValues = extractSampleValues(body, header);
 
-      const headerFormat = header?.format?.toUpperCase()
+      const headerFormat = header?.format?.toUpperCase();
       const headerType =
         headerFormat === 'TEXT' ||
         headerFormat === 'IMAGE' ||
         headerFormat === 'VIDEO' ||
         headerFormat === 'DOCUMENT'
           ? headerFormat.toLowerCase()
-          : null
+          : null;
 
-      const row = {
-        // Account tenancy + user audit, same split as the submit
-        // route. account_id is NOT NULL on message_templates
-        // post-017, so an INSERT without it errors.
-        account_id: accountId,
-        user_id: userId,
-        name: t.name,
+      const data = {
+        userId,
         category: normalizeCategory(t.category),
-        language: t.language,
-        header_type: headerType,
-        header_content: header?.text ?? null,
-        header_handle: header?.example?.header_handle?.[0] ?? null,
-        body_text: body?.text ?? '',
-        footer_text: footer?.text ?? null,
-        buttons: parsedButtons.length ? parsedButtons : null,
-        sample_values: sampleValues,
+        headerType: headerType ?? null,
+        headerContent: header?.text ?? null,
+        headerHandle: header?.example?.header_handle?.[0] ?? null,
+        bodyText: body?.text ?? '',
+        footerText: footer?.text ?? null,
+        buttons: parsedButtons.length ? parsedButtons : undefined,
+        sampleValues: sampleValues || undefined,
         status: normalizeStatus(t.status),
-        meta_template_id: t.id,
-        quality_score: normalizeQualityScore(t.quality_score),
-        updated_at: new Date().toISOString(),
-      }
+        metaTemplateId: t.id,
+        qualityScore: normalizeQualityScore(t.quality_score) || undefined
+      };
 
-      const { data: existing, error: lookupErr } = await supabase
-        .from('message_templates')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('name', t.name)
-        .eq('language', t.language)
-        .maybeSingle()
-
-      if (lookupErr) {
-        errors.push({
-          name: t.name,
-          language: t.language,
-          message: lookupErr.message,
-        })
-        continue
-      }
-
-      if (existing?.id) {
-        const { error: updErr } = await supabase
-          .from('message_templates')
-          .update(row)
-          .eq('id', existing.id)
-        if (updErr) {
-          errors.push({
-            name: t.name,
-            language: t.language,
-            message: updErr.message,
-          })
-        } else {
-          updated++
-        }
-      } else {
-        const { error: insErr } = await supabase
-          .from('message_templates')
-          .insert(row)
-        if (insErr) {
-          errors.push({
-            name: t.name,
-            language: t.language,
-            message: insErr.message,
-          })
-        } else {
-          inserted++
-        }
+      try {
+        const { isNew } = await MessageTemplateRepository.upsertByNameAndLanguage(accountId, t.name, t.language, data);
+        if (isNew) inserted++; else updated++;
+      } catch (err: any) {
+        errors.push({ name: t.name, language: t.language, message: err.message });
       }
     }
 
@@ -293,23 +218,15 @@ export async function POST() {
       updated,
       errors,
       truncated: pageCount >= PAGE_CAP && nextUrl !== null,
-    })
+    });
   } catch (error) {
-    // Auth failures map to 401/403 rather than being folded into the
-    // generic 500 below, which surfaces `error.message` as a sync failure.
-    if (
-      error instanceof UnauthorizedError ||
-      error instanceof ForbiddenError
-    ) {
-      return toErrorResponse(error)
+    if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
+      return toErrorResponse(error);
     }
-    console.error('Error syncing WhatsApp templates:', error)
+    console.error('Error syncing WhatsApp templates:', error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to sync templates',
-      },
+      { error: error instanceof Error ? error.message : 'Failed to sync templates' },
       { status: 500 },
-    )
+    );
   }
 }

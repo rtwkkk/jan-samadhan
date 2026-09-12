@@ -8,86 +8,87 @@
 // `created: false`; a new row returns 201 with `created: true`.
 // ============================================================
 
-import { requireApiKey } from '@/lib/auth/api-context';
+import { requireApiAuth } from '@/lib/auth/api-context';
 import { ok, okList, fail, toApiErrorResponse } from '@/lib/api/v1/respond';
 import {
   parseListParams,
-  keysetFilter,
   buildPage,
 } from '@/lib/api/v1/pagination';
 import {
-  CONTACT_SELECT,
-  serializeContact,
+  serializeContactFromMongo,
   findOrCreateContact,
   setContactTags,
   getContactById,
   resolveAuditUserId,
   ContactError,
 } from '@/lib/api/v1/contacts';
+import { ContactRepository } from '@/lib/mongodb/repositories/ContactRepository';
+import { connectToDatabase } from '@/lib/mongodb/client';
 
-// PostgREST filter values are comma/paren-delimited; strip anything
-// that could break the `.or()` grammar before interpolating a search
-// term. Leaves the characters a phone or name legitimately contains.
+import { IContact } from '@/lib/mongodb/models/Contact';
+
 function sanitizeSearch(raw: string): string {
   return raw.replace(/[^\p{L}\p{N} +@.\-_]/gu, '').trim();
 }
 
 export async function GET(request: Request) {
   try {
-    const ctx = await requireApiKey(request, 'contacts:read');
+    const ctx = await requireApiAuth(request, 'contacts:read', 'viewer');
+    await connectToDatabase();
+    
     const { limit, cursor } = parseListParams(request);
     const url = new URL(request.url);
     const search = sanitizeSearch(url.searchParams.get('search') ?? '');
     const tag = url.searchParams.get('tag');
 
-    // When filtering by tag, add an aliased INNER join on contact_tags
-    // used purely for the WHERE — the parent is kept only if it has the
-    // tag. The main `contact_tags(tags(*))` embed still returns the
-    // contact's FULL tag set for serialization. This filters in one
-    // bounded query (paged by limit+1) instead of pre-fetching an
-    // unbounded id list into an `.in(...)`.
-    const selectClause = tag
-      ? `${CONTACT_SELECT}, tag_filter:contact_tags!inner(tag_id)`
-      : CONTACT_SELECT;
-
-    let query = ctx.supabase
-      .from('contacts')
-      .select(selectClause)
-      .eq('account_id', ctx.accountId);
+    const filter: Record<string, any> = { accountId: ctx.accountId };
 
     if (search) {
-      query = query.or(`name.ilike.*${search}*,phone.ilike.*${search}*`);
+      const like = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { name: like },
+        { phone: like },
+      ];
     }
 
     if (tag) {
-      query = query.eq('tag_filter.tag_id', tag);
+      filter.tagIds = tag;
     }
 
-    query = query
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(limit + 1);
-
-    const kf = keysetFilter(cursor);
-    if (kf) query = query.or(kf);
-
-    const { data, error } = await query;
-    if (error) {
-      console.error('[api/v1/contacts] list error:', error);
-      return fail('internal', 'Failed to list contacts', 500);
+    if (cursor) {
+      filter.$or = [
+        { createdAt: { $lt: new Date(cursor.createdAt) } },
+        { 
+          createdAt: new Date(cursor.createdAt),
+          _id: { $lt: cursor.id }
+        }
+      ];
     }
 
-    // Cast via unknown: the conditional `selectClause` (with the
-    // tag_filter alias) is a runtime string, so supabase-js can't infer
-    // a row type from it.
+    // Overfetch by 1 to determine if there's a next page
+    const data = await ContactRepository.findMany(
+      ctx.accountId,
+      filter,
+      limit + 1
+    );
+
+    // Map to the shape buildPage expects for cursor encoding
+    const mappedForPagination = data.map(doc => ({
+      ...doc,
+      created_at: doc.createdAt.toISOString(),
+      id: doc._id
+    }));
+
     const { items, nextCursor } = buildPage(
-      (data ?? []) as unknown as Array<{ created_at: string; id: string }>,
+      mappedForPagination as any,
       limit
     );
-    return okList(
-      items.map((r) => serializeContact(r as Record<string, unknown>)),
-      nextCursor
+
+    const serializedItems = await Promise.all(
+      items.map(r => serializeContactFromMongo(r as any, ctx.accountId))
     );
+
+    return okList(serializedItems, nextCursor);
   } catch (err) {
     return toApiErrorResponse(err);
   }
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireApiKey(request, 'contacts:write');
+    const ctx = await requireApiAuth(request, 'contacts:write', 'agent');
 
     const body = (await request.json().catch(() => null)) as Record<
       string,
@@ -110,10 +111,9 @@ export async function POST(request: Request) {
       return fail('bad_request', "'phone' is required", 400);
     }
 
-    const auditUserId = await resolveAuditUserId(ctx.supabase, ctx.accountId);
+    const auditUserId = await resolveAuditUserId(ctx.accountId);
 
     const { id, created } = await findOrCreateContact(
-      ctx.supabase,
       ctx.accountId,
       auditUserId,
       {
@@ -126,7 +126,6 @@ export async function POST(request: Request) {
 
     if (Array.isArray(body.tags)) {
       await setContactTags(
-        ctx.supabase,
         ctx.accountId,
         auditUserId,
         id,
@@ -134,7 +133,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const contact = await getContactById(ctx.supabase, ctx.accountId, id);
+    const contact = await getContactById(ctx.accountId, id);
     return ok(contact, created ? 201 : 200);
   } catch (err) {
     if (err instanceof ContactError) {

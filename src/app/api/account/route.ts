@@ -26,9 +26,11 @@ import {
 
 export async function GET() {
   try {
+    const { requireAuth } = await import('@/lib/auth/server');
+    const auth = await requireAuth();
     const ctx = await getCurrentAccount();
     return NextResponse.json({
-      account: ctx.account,
+      account: auth.account,
       role: ctx.role,
     });
   } catch (err) {
@@ -52,51 +54,63 @@ export async function PATCH(request: Request) {
     );
     if (!limit.success) return rateLimitResponse(limit);
 
-    const body = (await request.json().catch(() => null)) as
-      | { name?: unknown }
-      | null;
-    const rawName = body?.name;
-
-    if (typeof rawName !== "string") {
-      return NextResponse.json(
-        { error: "'name' must be a string" },
-        { status: 400 },
-      );
+    const body = await request.json().catch(() => null) as {
+      name?: unknown;
+      default_currency?: unknown;
+    } | null;
+    
+    if (!body) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const name = rawName.trim();
-    if (name.length === 0) {
-      return NextResponse.json(
-        { error: "Account name cannot be empty" },
-        { status: 400 },
-      );
-    }
-    if (name.length > MAX_NAME_LEN) {
-      return NextResponse.json(
-        { error: `Account name must be ${MAX_NAME_LEN} characters or fewer` },
-        { status: 400 },
-      );
+    const updates: any = {};
+    
+    if (body.name !== undefined) {
+      const rawName = body.name;
+      if (typeof rawName !== "string") {
+        return NextResponse.json({ error: "'name' must be a string" }, { status: 400 });
+      }
+      const name = rawName.trim();
+      if (name.length === 0) {
+        return NextResponse.json({ error: "Account name cannot be empty" }, { status: 400 });
+      }
+      if (name.length > MAX_NAME_LEN) {
+        return NextResponse.json({ error: `Account name must be ${MAX_NAME_LEN} characters or fewer` }, { status: 400 });
+      }
+      updates.name = name;
     }
 
-    // RLS allows this UPDATE because accounts_update requires
-    // `is_account_member(id, 'admin')`, and requireRole already
-    // guaranteed the caller is admin+.
-    const { data, error } = await ctx.supabase
-      .from("accounts")
-      .update({ name })
-      .eq("id", ctx.accountId)
-      .select("id, name")
-      .single();
+    if (body.default_currency !== undefined) {
+      const rawCurrency = body.default_currency;
+      if (typeof rawCurrency !== "string" || rawCurrency.length !== 3) {
+        return NextResponse.json({ error: "'default_currency' must be a 3-letter string" }, { status: 400 });
+      }
+      updates.defaultCurrency = rawCurrency.toUpperCase();
+    }
 
-    if (error) {
-      console.error("[PATCH /api/account] update error:", error);
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
+    // Update account in MongoDB
+    const { connectToDatabase } = await import('@/lib/mongodb/client');
+    const { Account } = await import('@/lib/mongodb/models/Account');
+    await connectToDatabase();
+    
+    const updatedAccount = await Account.findByIdAndUpdate(
+      ctx.accountId,
+      { $set: updates },
+      { new: true },
+    ).lean();
+
+    if (!updatedAccount) {
       return NextResponse.json(
         { error: "Failed to update account" },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ account: data });
+    return NextResponse.json({ account: { id: updatedAccount._id, name: updatedAccount.name } });
   } catch (err) {
     return toErrorResponse(err);
   }

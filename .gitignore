@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local runtime storage
+.storage/
+
+# local patch scripts
+patch_*.js

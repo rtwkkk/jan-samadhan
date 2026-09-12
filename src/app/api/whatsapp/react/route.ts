@@ -9,22 +9,21 @@ import {
   RATE_LIMITS,
 } from '@/lib/rate-limit';
 
+import { connectToDatabase } from '@/lib/mongodb/client';
+import { MessageRepository } from '@/lib/mongodb/repositories/MessageRepository';
+import { Conversation } from '@/lib/mongodb/models/Conversation';
+import { Contact } from '@/lib/mongodb/models/Contact';
+
 /**
  * POST /api/whatsapp/react
  *
  * Body: { message_id: <internal UUID>, emoji: <single emoji or "" to remove> }
  *
- * Sends the reaction to Meta and mirrors it into `message_reactions`
- * (delete on empty emoji). Customer-side reactions are handled by the
- * webhook — this route only writes `actor_type = 'agent'` rows.
+ * Sends the reaction to Meta and mirrors it into MongoDB `reactions` array.
  */
 export async function POST(request: Request) {
   try {
-    // Reacting is a write operation (`canSendMessages`), and it pushes the
-    // reaction to Meta before mirroring it locally — so, as on /send, a
-    // missing role check let a read-only viewer put a visible reaction on
-    // the customer's message even though RLS blocked the local mirror.
-    const { supabase, accountId, userId } = await requireRole('agent');
+    const { accountId, userId } = await requireRole('agent');
 
     const limit = checkRateLimit(`react:${userId}`, RATE_LIMITS.react);
     if (!limit.success) {
@@ -44,43 +43,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Resolve target message + its conversation; verify ownership.
-    const { data: targetMessage, error: msgError } = await supabase
-      .from('messages')
-      .select('id, message_id, conversation_id')
-      .eq('id', message_id)
-      .maybeSingle();
+    await connectToDatabase();
 
-    if (msgError || !targetMessage) {
+    // Resolve target message
+    const targetMessage = await MessageRepository.findById(accountId, message_id);
+
+    if (!targetMessage) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    if (!targetMessage.message_id) {
-      // No Meta ID yet — usually a sending/failed agent message. We can't
-      // tell Meta to react to a message it never received.
+    if (!targetMessage.messageId) {
+      // No Meta ID yet — usually a sending/failed agent message.
       return NextResponse.json(
         { error: 'Cannot react to a message that has not been sent to WhatsApp' },
         { status: 400 },
       );
     }
 
-    const { data: conversation, error: convError } = await supabase
-      .from('conversations')
-      .select('id, account_id, contact:contacts(phone)')
-      .eq('id', targetMessage.conversation_id)
-      .eq('account_id', accountId)
-      .maybeSingle();
+    const conversation = await Conversation.findOne({ _id: targetMessage.conversationId, accountId }).lean();
 
-    if (convError || !conversation) {
+    if (!conversation) {
       return NextResponse.json(
         { error: 'Conversation not found' },
         { status: 404 },
       );
     }
 
-    const contact = Array.isArray(conversation.contact)
-      ? conversation.contact[0]
-      : conversation.contact;
+    const contact = await Contact.findOne({ _id: conversation.contactId, accountId }).lean();
     if (!contact?.phone) {
       return NextResponse.json(
         { error: 'Contact phone number not found' },
@@ -88,29 +77,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // WhatsApp config + access token. Account-scoped post-multi-user.
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('phone_number_id, access_token')
-      .eq('account_id', accountId)
-      .single();
+    // TODO: Phase 4 - Move whatsapp_config to MongoDB. For now, fetch from Supabase.
+    // Wait, the prompt says "Do NOT add/reintroduce Supabase."
+    // But whatsapp_config was already migrated to MongoDB in Phase 3 Step 1!
+    // Let's use WhatsappConfigRepository.
+    const { WhatsappConfigRepository } = await import('@/lib/mongodb/repositories/WhatsappConfigRepository');
+    const config = await WhatsappConfigRepository.findByAccountId(accountId);
 
-    if (configError || !config) {
+    if (!config || !config.accessToken) {
       return NextResponse.json(
         { error: 'WhatsApp not configured.' },
         { status: 400 },
       );
     }
 
-    const accessToken = decrypt(config.access_token);
+    const accessToken = decrypt(config.accessToken);
     const sanitizedPhone = sanitizePhoneForMeta(contact.phone);
 
     try {
       await sendReactionMessage({
-        phoneNumberId: config.phone_number_id,
+        phoneNumberId: config.phoneNumberId,
         accessToken,
         to: sanitizedPhone,
-        targetMessageId: targetMessage.message_id,
+        targetMessageId: targetMessage.messageId,
         emoji,
       });
     } catch (err) {
@@ -124,48 +113,24 @@ export async function POST(request: Request) {
     }
 
     // Mirror into DB. Empty emoji = removal.
-    if (emoji === '') {
-      const { error: delError } = await supabase
-        .from('message_reactions')
-        .delete()
-        .eq('message_id', targetMessage.id)
-        .eq('actor_type', 'agent')
-        .eq('actor_id', userId);
-
-      if (delError) {
-        console.error('[whatsapp/react] DB delete failed:', delError.message);
-        return NextResponse.json(
-          { error: 'Reaction sent to Meta but DB delete failed' },
-          { status: 500 },
-        );
-      }
-    } else {
-      // Upsert. The unique constraint (message_id, actor_type, actor_id)
-      // lets us swap emoji in a single statement.
-      const { error: upsertError } = await supabase.from('message_reactions').upsert(
-        {
-          message_id: targetMessage.id,
-          conversation_id: targetMessage.conversation_id,
-          actor_type: 'agent',
-          actor_id: userId,
-          emoji,
-        },
-        { onConflict: 'message_id,actor_type,actor_id' },
+    try {
+      await MessageRepository.setReaction(
+        accountId,
+        targetMessage._id,
+        'agent',
+        userId,
+        emoji
       );
-
-      if (upsertError) {
-        console.error('[whatsapp/react] DB upsert failed:', upsertError.message);
-        return NextResponse.json(
-          { error: 'Reaction sent to Meta but DB upsert failed' },
-          { status: 500 },
-        );
-      }
+    } catch (err) {
+      console.error('[whatsapp/react] DB update failed:', err);
+      return NextResponse.json(
+        { error: 'Reaction sent to Meta but DB update failed' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    // requireRole throws Unauthorized/Forbidden; toErrorResponse maps
-    // those to 401/403 and collapses anything else to a generic 500.
     console.error('Error in WhatsApp react POST:', error);
     return toErrorResponse(error);
   }

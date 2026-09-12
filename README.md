@@ -83,7 +83,9 @@ in an afternoon and make yours.
 git clone https://github.com/<your-username>/wacrm.git
 cd wacrm
 npm install
-cp .env.local.example .env.local   # fill in Supabase + Meta creds
+cp .env.local.example .env.local   # fill in MongoDB, Groq, and Meta credentials
+# Ensure MongoDB is running locally or provide a cloud MONGODB_URI
+# Use ngrok for WhatsApp webhooks: ngrok http 3000
 npm run dev
 ```
 

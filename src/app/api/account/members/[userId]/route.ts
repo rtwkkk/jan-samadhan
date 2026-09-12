@@ -4,18 +4,12 @@
 //   PATCH  — change a member's role.   Admin+.
 //   DELETE — remove a member.          Admin+.
 //
-// Both delegate to SECURITY DEFINER RPCs from migration 018:
-//   - set_member_role(p_user_id, p_new_role)
-//   - remove_account_member(p_user_id)
-//
-// The RPCs do the *real* authorisation work — caller must be
-// admin+, target must be in caller's account, target can't be the
-// owner, can't be self. The TS layer here only forwards the call
-// and maps Postgres SQLSTATEs back to HTTP statuses.
+// Both delegate to TeamService which implements the
+// authorisation work — caller must be admin+, target must be in 
+// caller's account, target can't be the owner, can't be self.
 // ============================================================
 
 import { NextResponse } from "next/server";
-import type { PostgrestError } from "@supabase/supabase-js";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { isAccountRole } from "@/lib/auth/roles";
@@ -24,18 +18,17 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { TeamService } from "@/lib/auth/team-service";
 
-// Map known SQLSTATEs from the RPCs (see migration 018) onto HTTP
-// statuses. The `error.code` field is the SQLSTATE; the `message`
-// is the human-readable RAISE message we put in the migration.
-function rpcErrorToResponse(err: PostgrestError): NextResponse {
-  if (err.code === "42501") {
-    return NextResponse.json({ error: err.message }, { status: 403 });
+function serviceErrorToResponse(err: any): NextResponse {
+  const message = err.message || '';
+  if (message.startsWith("42501:")) {
+    return NextResponse.json({ error: message.split(':')[1] }, { status: 403 });
   }
-  if (err.code === "22023") {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  if (message.startsWith("22023:")) {
+    return NextResponse.json({ error: message.split(':')[1] }, { status: 400 });
   }
-  console.error("[members route] unexpected RPC error:", err);
+  console.error("[members route] unexpected service error:", err);
   return NextResponse.json(
     { error: "Failed to update member" },
     { status: 500 },
@@ -69,8 +62,6 @@ export async function PATCH(
       );
     }
 
-    // The RPC blocks promotion to / demotion from owner, but
-    // surface the friendlier 400 before crossing the wire too.
     if (role === "owner") {
       return NextResponse.json(
         {
@@ -81,12 +72,11 @@ export async function PATCH(
       );
     }
 
-    const { error } = await ctx.supabase.rpc("set_member_role", {
-      p_user_id: userId,
-      p_new_role: role,
-    });
-
-    if (error) return rpcErrorToResponse(error);
+    try {
+      await TeamService.setMemberRole(ctx.userId, userId, role);
+    } catch (error) {
+      return serviceErrorToResponse(error);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -109,13 +99,14 @@ export async function DELETE(
 
     const { userId } = await params;
 
-    const { data, error } = await ctx.supabase.rpc("remove_account_member", {
-      p_user_id: userId,
-    });
+    let newPersonalAccountId: string;
+    try {
+      newPersonalAccountId = await TeamService.removeMember(ctx.userId, userId);
+    } catch (error) {
+      return serviceErrorToResponse(error);
+    }
 
-    if (error) return rpcErrorToResponse(error);
-
-    return NextResponse.json({ ok: true, newPersonalAccountId: data });
+    return NextResponse.json({ ok: true, newPersonalAccountId });
   } catch (err) {
     return toErrorResponse(err);
   }

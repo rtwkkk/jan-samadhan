@@ -6,59 +6,68 @@
 // any message is returned — a foreign or unknown id → 404.
 // ============================================================
 
-import { requireApiKey } from '@/lib/auth/api-context';
+import { requireApiAuth } from '@/lib/auth/api-context';
 import { okList, fail, toApiErrorResponse } from '@/lib/api/v1/respond';
 import {
   parseListParams,
-  keysetFilter,
   buildPage,
 } from '@/lib/api/v1/pagination';
 import { serializeMessage } from '@/lib/api/v1/conversations';
 import type { Message } from '@/types';
+
+import { connectToDatabase } from '@/lib/mongodb/client';
+import { Conversation } from '@/lib/mongodb/models/Conversation';
+import { MessageRepository } from '@/lib/mongodb/repositories/MessageRepository';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireApiKey(request, 'messages:read');
+    const ctx = await requireApiAuth(request, 'messages:read');
     const { id } = await params;
     const { limit, cursor } = parseListParams(request);
 
+    await connectToDatabase();
+
     // Gate on account ownership of the conversation first.
-    const { data: conv } = await ctx.supabase
-      .from('conversations')
-      .select('id')
-      .eq('id', id)
-      .eq('account_id', ctx.accountId)
-      .maybeSingle();
+    const conv = await Conversation.findOne({ _id: id, accountId: ctx.accountId }).lean();
     if (!conv) return fail('not_found', 'Conversation not found', 404);
 
-    let query = ctx.supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', id)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(limit + 1);
-
-    const kf = keysetFilter(cursor);
-    if (kf) query = query.or(kf);
-
-    const { data, error } = await query;
-    if (error) {
-      console.error('[api/v1/messages] list error:', error);
-      return fail('internal', 'Failed to list messages', 500);
-    }
-
-    const { items, nextCursor } = buildPage(
-      (data ?? []) as Array<{ created_at: string; id: string }>,
-      limit
+    const messages = await MessageRepository.findManyWithCursor(
+      ctx.accountId,
+      id,
+      limit + 1, // request one extra for pagination
+      cursor
     );
-    return okList(
-      items.map((m) => serializeMessage(m as unknown as Message)),
-      nextCursor
-    );
+
+    // Map Mongo shape back to the API format expected by frontend
+    const rows = messages.map(m => ({
+      id: m._id,
+      account_id: m.accountId,
+      conversation_id: m.conversationId,
+      sender_type: m.senderType,
+      sender_id: m.senderId,
+      content_type: m.contentType,
+      content_text: m.contentText,
+      media_url: m.media?.url ?? null,
+      message_id: m.messageId,
+      status: m.status,
+      created_at: new Date(m.createdAt).toISOString(),
+      updated_at: new Date(m.updatedAt).toISOString(),
+      reactions: (m.reactions || []).map((r: any) => ({
+        id: String(Math.random()), // reactions in mongo don't have unique ids, mock one if needed
+        message_id: m._id,
+        conversation_id: m.conversationId,
+        actor_type: r.actorType,
+        actor_id: r.actorId,
+        emoji: r.emoji,
+        created_at: new Date(r.createdAt || m.createdAt).toISOString()
+      }))
+    }));
+
+    const { items, nextCursor } = buildPage(rows as any[], limit);
+    return okList(items.map((m) => serializeMessage(m as unknown as Message)), nextCursor);
   } catch (err) {
     return toApiErrorResponse(err);
   }

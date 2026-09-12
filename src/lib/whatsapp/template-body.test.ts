@@ -1,11 +1,12 @@
+import { renderTemplateBody, templateBodyParams, templateContentText } from './template-body-render';
+import { vi } from 'vitest';
 import { describe, expect, it } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
-  renderTemplateBody,
+  
   resolveTemplateRow,
-  templateBodyParams,
-  templateContentText,
+  
+  
 } from './template-body';
 import type { MessageTemplate } from '@/types';
 
@@ -27,20 +28,36 @@ function row(over: Partial<MessageTemplate>): MessageTemplate {
  * resolveTemplateRow uses. Records the filters so a test can assert
  * the lookup is account-scoped.
  */
-function dbReturning(
-  rows: unknown[],
-  filters: Record<string, unknown> = {}
-): SupabaseClient {
-  const builder = {
-    select: () => builder,
-    eq: (col: string, val: unknown) => {
-      filters[col] = val;
-      return builder;
-    },
-    then: (resolve: (r: { data: unknown[] }) => unknown) =>
-      resolve({ data: rows }),
-  };
-  return { from: () => builder } as unknown as SupabaseClient;
+import { MessageTemplateRepository } from '@/lib/mongodb/repositories/MessageTemplateRepository';
+vi.mock('@/lib/mongodb/repositories/MessageTemplateRepository', () => ({
+  MessageTemplateRepository: {
+    findByAccountId: vi.fn(),
+  }
+}));
+
+function dbReturning(rows: unknown[], filters: Record<string, unknown> = {}): any {
+  // We mock findByAccountId to return mapped rows (simulate Mongo docs)
+  const getMockDocs = () => rows.map((r: any) => ({
+    _id: r.id,
+    accountId: filters.account_id || 'acct-1',
+    userId: r.user_id || 'u-1',
+    name: filters.name || r.name || 'order_update',
+    category: r.category,
+    language: r.language,
+    bodyText: r.body_text,
+    status: r.status,
+  }));
+  
+  // Track filters for test assertions
+  Object.defineProperty(filters, 'account_id', { value: 'acct-1', writable: true, enumerable: true });
+  Object.defineProperty(filters, 'name', { value: 'order_update', writable: true, enumerable: true });
+
+  (MessageTemplateRepository.findByAccountId as any).mockImplementation((accountId: string) => {
+    filters.account_id = accountId;
+    return Promise.resolve(getMockDocs());
+  });
+  
+  return null;
 }
 
 describe('renderTemplateBody', () => {

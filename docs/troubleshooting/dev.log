@@ -1,0 +1,18 @@
+
+> wacrm@0.8.0 dev
+> next dev -p 3005
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3005
+- Network:       http://192.168.29.151:3005
+- Environments: .env.local
+✓ Ready in 258ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          48118
+- Dir:          /Users/vijayprasad/Documents/crm/new
+- Log:          .next/dev/logs/next-development.log
+
+Run kill 48118 to stop it.
+[?25h

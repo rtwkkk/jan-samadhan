@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { MessageTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,10 +93,9 @@ export function TemplatePicker({
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+            const authRes = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const authData = await authRes.json();
+      const user = authData.user ? { id: authData.user.id } : null;
 
       if (!user) {
         if (!cancelled) {
@@ -111,19 +109,18 @@ export function TemplatePicker({
       // user_id. Templates are account-owned, so filtering on the caller's
       // user_id hid templates that a teammate created — leaving them unable
       // to send approved templates in a shared account.
-      const { data, error } = await supabase
-        .from("message_templates")
-        .select("*")
-        .eq("status", "APPROVED")
-        .order("created_at", { ascending: false });
-
+      
+      const res = await fetch('/api/whatsapp/templates');
       if (cancelled) return;
-      if (error) {
-        console.error("Failed to fetch templates:", error);
+      if (!res.ok) {
+        console.error("Failed to fetch templates:", await res.text());
         setTemplates([]);
       } else {
+        let data = await res.json();
+        data = data.filter((t: any) => t.status === "APPROVED");
         setTemplates((data as MessageTemplate[]) ?? []);
       }
+
       setLoading(false);
     })();
 

@@ -64,7 +64,6 @@ describe('/api/contacts/[id]/tags', () => {
     expect(response.status).toBe(200);
     expect(mocks.requireRole).toHaveBeenCalledWith('agent');
     expect(mocks.add).toHaveBeenCalledWith({
-      db: context.supabase,
       accountId: 'account-1',
       contactId: 'contact-1',
       tagId: 'tag-1',
@@ -86,7 +85,7 @@ describe('/api/contacts/[id]/tags', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.remove).toHaveBeenCalledWith(context.supabase, {
+    expect(mocks.remove).toHaveBeenCalledWith({
       accountId: 'account-1',
       contactId: 'contact-1',
       tagId: 'tag-1',

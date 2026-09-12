@@ -1,17 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
-import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
+
 import { toast } from 'sonner';
-import type { Contact, Tag, ContactTag } from '@/types';
-import {
-  findExistingContact,
-  isExactMatch,
-  isUniqueViolation,
-  type ExistingContact,
-} from '@/lib/contacts/dedupe';
+import type { Contact, Tag, ContactTag, CustomField } from '@/types';
+import { normalizePhone, phonesMatch } from '@/lib/whatsapp/phone-utils';
+import type { ExistingContact } from "@/lib/contacts/dedupe";
+
 import {
   Dialog,
   DialogContent,
@@ -47,7 +43,6 @@ export function ContactForm({
   onViewExisting,
 }: ContactFormProps) {
   const t = useTranslations('Contacts.form');
-  const supabase = createClient();
   const { accountId } = useAuth();
   const isEdit = !!contact;
 
@@ -69,6 +64,10 @@ export function ContactForm({
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loadingTags, setLoadingTags] = useState(false);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [loadingCustom, setLoadingCustom] = useState(false);
+
 
   useEffect(() => {
     if (open) {
@@ -79,6 +78,7 @@ export function ContactForm({
       setSelectedTagIds(contactTags.map((ct) => ct.tag_id));
       setDupMatch(null);
       fetchTags();
+      fetchCustomFields();
     }
   }, [open, contact]);
 
@@ -93,24 +93,58 @@ export function ContactForm({
     }
     setCheckingDup(true);
     try {
-      const existing = await findExistingContact(supabase, accountId, value);
-      setDupMatch(
-        existing
-          ? { contact: existing, exact: isExactMatch(existing, value) }
-          : null,
-      );
+      const res = await fetch(`/api/contacts?search=${encodeURIComponent(value)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const matches = data.contacts || [];
+        const match = matches.find((c: any) => phonesMatch(c.phone, value));
+        if (match) {
+          const isExact = normalizePhone(match.phone) === normalizePhone(value);
+          setDupMatch({ contact: match, exact: isExact });
+        } else {
+          setDupMatch(null);
+        }
+      }
     } finally {
       setCheckingDup(false);
     }
   }
 
+  
+  async function fetchCustomFields() {
+    setLoadingCustom(true);
+    try {
+      if (contact?.id) {
+        const res = await fetch(`/api/contacts/${contact.id}/custom-values`);
+        if (res.ok) {
+          const data = await res.json();
+          setCustomFields(data.fields || []);
+          setCustomValues(data.values || {});
+        }
+      } else {
+        const res = await fetch('/api/custom-fields');
+        if (res.ok) {
+          const data = await res.json();
+          setCustomFields(data);
+          setCustomValues({});
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCustom(false);
+    }
+  }
+
   async function fetchTags() {
     setLoadingTags(true);
-    const { data } = await supabase
-      .from('tags')
-      .select('*')
-      .order('name');
-    if (data) setTags(data);
+    try {
+      const res = await fetch('/api/tags');
+      if (res.ok) {
+        const data = await res.json();
+        setTags(data);
+      }
+    } catch (e) {}
     setLoadingTags(false);
   }
 
@@ -140,76 +174,58 @@ export function ContactForm({
     setSaving(true);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
+      const authRes = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (!authRes.ok) return;
+      const authData = await authRes.json();
+      const user = authData.user ? { id: authData.user.id } : null;
       if (!user) throw new Error('Not authenticated');
       if (!accountId) throw new Error('Your profile is not linked to an account.');
 
       let contactId = contact?.id;
 
       if (isEdit && contactId) {
-        const { error } = await supabase
-          .from('contacts')
-          .update({
+        const res = await fetch(`/api/v1/contacts/${contactId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             name: name.trim() || null,
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
-            updated_at: new Date().toISOString(),
+            tags: selectedTagIds.map(id => tags.find(t => t.id === id)?.name).filter(Boolean),
           })
-          .eq('id', contactId);
-        if (error) throw error;
+        });
+        if (!res.ok) throw new Error('Failed to update contact');
+        // Save custom fields for existing contact
+        await fetch(`/api/contacts/${contactId}/custom-values`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: customValues }) });
       } else {
-        const { data, error } = await supabase
-          .from('contacts')
-          .insert({
-            user_id: user.id,
-            account_id: accountId,
+        const res = await fetch('/api/v1/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             name: name.trim() || null,
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
+            tags: selectedTagIds.map(id => tags.find(t => t.id === id)?.name).filter(Boolean),
           })
-          .select('id')
-          .single();
-        if (error) throw error;
-        contactId = data.id;
-      }
-
-      // Sync tags
-      if (contactId) {
-        const existingTagIds = new Set(contactTags.map((tag) => tag.tag_id));
-        const desiredTagIds = new Set(selectedTagIds);
-        const toRemove = [...existingTagIds].filter((id) => !desiredTagIds.has(id));
-        const toAdd = [...desiredTagIds].filter((id) => !existingTagIds.has(id));
-
-        for (const tagId of toRemove) {
-          await deleteContactTag(contactId, tagId);
-        }
-        for (const tagId of toAdd) {
-          await addContactTag(contactId, tagId);
-        }
+        });
+        if (!res.ok) throw new Error('Failed to create contact');
+        const data = await res.json();
+        const newContactId = data.data.id;
+        // Save custom fields for new contact
+        await fetch(`/api/contacts/${newContactId}/custom-values`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: customValues }) });
       }
 
       toast.success(isEdit ? t('toastSuccessEdit') : t('toastSuccessAdd'));
       onOpenChange(false);
       onSaved();
     } catch (err: unknown) {
-      // The unique index (migration 022) rejects a duplicate phone that
-      // slipped past the on-blur check (race, or a format that
-      // normalizes equal). Surface it as the friendly duplicate notice
-      // and, for new contacts, point the user at the existing record.
-      if (isUniqueViolation(err)) {
+      if (err instanceof Error && err.message.includes('409')) {
         toast.error(t('toastConflict'));
-        if (!isEdit && accountId) {
-          const existing = await findExistingContact(
-            supabase,
-            accountId,
-            phone.trim(),
-          );
-          if (existing) setDupMatch({ contact: existing, exact: true });
+        if (!isEdit) {
+          // Re-trigger the blur check to fetch the existing record and show the conflict UI
+          checkDuplicate();
         }
         return;
       }
@@ -322,6 +338,22 @@ export function ContactForm({
               className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
+
+
+          {customFields.map((field) => (
+            <div key={field.id} className="space-y-2">
+              <Label htmlFor={`cf-${field.id}`} className="text-muted-foreground">
+                {field.field_name}
+              </Label>
+              <Input
+                id={`cf-${field.id}`}
+                value={customValues[field.id] ?? ''}
+                onChange={(e) => setCustomValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
+                placeholder={t('enterCustomField', { name: field.field_name, defaultValue: `Enter ${field.field_name}...` })}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+          ))}
 
           <div className="space-y-2">
             <Label className="text-muted-foreground">{t('tagsLabel')}</Label>

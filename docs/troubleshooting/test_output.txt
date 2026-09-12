@@ -1,0 +1,578 @@
+
+> wacrm@0.8.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/Users/vijayprasad/Documents/crm/new[39m
+
+ [31m❯[39m src/app/api/contacts/[id]/tags/route.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 16[2mms[22m[39m
+[31m     [31m×[31m requires an agent and dispatches a newly-added tag[39m[32m 12[2mms[22m[39m
+     [32m✓[39m rejects a missing tag id before writing[32m 1[2mms[22m[39m
+[31m     [31m×[31m removes a tag through the same account-scoped route[39m[32m 2[2mms[22m[39m
+ [31m❯[39m src/lib/contacts/dedupe.test.ts [2m([22m[2m11 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 9[2mms[22m[39m
+     [32m✓[39m strips every non-digit[32m 1[2mms[22m[39m
+     [32m✓[39m collapses different formats of the same number to one key[32m 0[2mms[22m[39m
+     [32m✓[39m treats different formatting of the same digits as exact[32m 0[2mms[22m[39m
+     [32m✓[39m is false for a trunk-variant (fuzzy) match[32m 0[2mms[22m[39m
+[31m     [31m×[31m detects Postgres 23505[39m[32m 4[2mms[22m[39m
+     [32m✓[39m is false for other errors / non-objects[32m 0[2mms[22m[39m
+     [32m✓[39m keeps the first occurrence and counts in-file duplicates[32m 0[2mms[22m[39m
+     [32m✓[39m drops rows with no digits[32m 0[2mms[22m[39m
+[31m     [31m×[31m returns a trunk-variant match via phonesMatch[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m returns null when no candidate matches[39m[32m 0[2mms[22m[39m
+     [32m✓[39m returns null for an empty phone without querying[32m 0[2mms[22m[39m
+ [31m❯[39m src/lib/contacts/tag-write.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 14[2mms[22m[39m
+[31m     [31m×[31m returns true only when the join row was inserted[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m treats an error-free insert as successful even without a returned row[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m treats a unique violation as an idempotent duplicate[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m refuses contacts and tags outside the account[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m surfaces non-duplicate insert failures[39m[32m 4[2mms[22m[39m
+ [31m❯[39m src/lib/api/v1/contacts.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 8[2mms[22m[39m
+[31m     [31m×[31m flattens contact_tags(tags(*)) onto a tags array and nulls missing fields[39m[32m 5[2mms[22m[39m
+     [32m✓[39m tolerates a row with no contact_tags key[32m 0[2mms[22m[39m
+[31m     [31m×[31m rejects a non-E.164 phone with a 400 ContactError[39m[32m 2[2mms[22m[39m
+ [32m✓[39m src/i18n/icu-safety.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 68[2mms[22m[39m
+ [31m❯[39m src/lib/whatsapp/send-message.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[32m 15[2mms[22m[39m
+     [32m✓[39m requires conversation_id and message_type[32m 3[2mms[22m[39m
+     [32m✓[39m rejects an unsupported message_type[32m 0[2mms[22m[39m
+     [32m✓[39m requires content_text for text messages[32m 0[2mms[22m[39m
+     [32m✓[39m requires template_name for template messages[32m 0[2mms[22m[39m
+     [32m✓[39m requires media_url for media kinds[32m 1[2mms[22m[39m
+     [32m✓[39m rejects an over-long media caption (non-audio)[32m 0[2mms[22m[39m
+     [32m✓[39m requires a valid interactive payload for interactive messages[32m 1[2mms[22m[39m
+[31m     [31m×[31m allows a long "caption" on audio (audio carries none) — so it reaches the DB[39m[32m 6[2mms[22m[39m
+     [32m✓[39m carries a machine code and an HTTP status[32m 0[2mms[22m[39m
+[31m     [31m×[31m stores the substituted body when the caller sends no text[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m reads body values out of the structured params shape too[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m does not override the composer's pre-rendered text[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m sends the local row's language when the caller names none[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m leaves content_text null when the account has no local template row[39m[32m 0[2mms[22m[39m
+ [31m❯[39m src/lib/whatsapp/resolve-conversation.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 10[2mms[22m[39m
+     [32m✓[39m rejects an invalid phone before any DB call[32m 1[2mms[22m[39m
+[31m     [31m×[31m fails with whatsapp_not_configured when no config owner exists[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m returns the existing contact + conversation without creating[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m creates contact + conversation when none exist[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m re-resolves an existing contact when the insert loses a unique race[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m re-resolves the conversation when the insert loses a unique race[39m[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-header-handle.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-lifecycle.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/registration.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/lib/media/blob-cache.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m src/lib/currency.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m src/lib/api/v1/pagination.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/meta-api.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-webhook.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-body.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/app/api/whatsapp/config/route.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-send-builder.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-validators.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/app/api/whatsapp/config/verify-registration/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/encryption.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/lib/dashboard/date-utils.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/lib/auth/invitations.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/lib/auth/roles.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/middleware.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/components/ui/dropdown-menu-group-label.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/lib/auth/api-context.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/meta-api.media.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/rate-limit.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-components.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+[90mstderr[2m | src/lib/whatsapp/webhook-signature.test.ts[2m > [22m[2mverifyMetaWebhookSignature[2m > [22m[2mfail-closed when secret is missing[2m > [22m[2mrejects even a correctly-formed signature when no secret is configured
+[22m[39m[webhook] META_APP_SECRET is not set — rejecting request. Configure the env var (Meta → App Settings → Basic → App Secret) to enable signature verification.
+
+ [32m✓[39m src/lib/whatsapp/webhook-signature.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/conversations/reopen.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/meta-api.resumable.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/i18n/messages.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/presence.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/phone-utils.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/interactive.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/api-keys/keys.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/storage/upload-media.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/inbox/conversations.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/lib/contacts/parse-contact-csv.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/api-keys/scopes.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/auth/server.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1320[2mms[22m[39m
+     [33m[2m✓[22m[39m hashes passwords and verifies correctly (Tests 1 & 2) [33m 1316[2mms[22m[39m
+ [32m✓[39m src/lib/media/gallery.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/template-status-normalize.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/broadcast-retry.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/api/v1/conversations.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/whatsapp/mirror-inbound-media.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [2m[90m↓[39m[22m src/lib/auth/account.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/app/api/whatsapp/send/route.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [32m✓[39m src/lib/media/filename.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [2m[90m↓[39m[22m src/app/api/whatsapp/webhook/route.test.ts [2m([22m[2m15 tests[22m[2m | [22m[33m15 skipped[39m[2m)[22m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 23 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/dedupe.test.ts[2m > [22misUniqueViolation[2m > [22mdetects Postgres 23505
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/contacts/dedupe.test.ts:[2m39:50[22m[39m
+    [90m 37|[39m [34mdescribe[39m([32m"isUniqueViolation"[39m[33m,[39m () [33m=>[39m {
+    [90m 38|[39m   [34mit[39m([32m"detects Postgres 23505"[39m[33m,[39m () [33m=>[39m {
+    [90m 39|[39m     [34mexpect[39m([34misUniqueViolation[39m({ code[33m:[39m [32m"23505"[39m }))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                                  [31m^[39m
+    [90m 40|[39m   })[33m;[39m
+    [90m 41|[39m   [34mit[39m([32m"is false for other errors / non-objects"[39m[33m,[39m () [33m=>[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/dedupe.test.ts[2m > [22mfindExistingContact[2m > [22mreturns a trunk-variant match via phonesMatch
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m findExistingContact src/lib/contacts/dedupe.ts:[2m36:9[22m[39m
+[90m [2m❯[22m src/lib/contacts/dedupe.test.ts:[2m83:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/dedupe.test.ts[2m > [22mfindExistingContact[2m > [22mreturns null when no candidate matches
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m findExistingContact src/lib/contacts/dedupe.ts:[2m36:9[22m[39m
+[90m [2m❯[22m src/lib/contacts/dedupe.test.ts:[2m89:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/tag-write.test.ts[2m > [22maddContactTagIfAbsent[2m > [22mreturns true only when the join row was inserted
+[31m[1mAssertionError[22m: promise rejected "MongooseError: The `uri` parameter to `op…" instead of resolving[39m
+[36m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m62:47[22m[39m
+    [90m 60|[39m [34mdescribe[39m([32m'addContactTagIfAbsent'[39m[33m,[39m () [33m=>[39m {
+    [90m 61|[39m   [34mit[39m([32m'returns true only when the join row was inserted'[39m[33m,[39m [35masync[39m () [33m=>[39m {
+    [90m 62|[39m     [35mawait[39m [34mexpect[39m([34maddContactTagIfAbsent[39m(input))[33m.[39mresolves[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                               [31m^[39m
+    [90m 63|[39m   })[33m;[39m
+    [90m 64|[39m
+
+[31m[1mCaused by: MongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+[90m [2m❯[22m assertContactAndTagOwnership src/lib/contacts/tag-write.ts:[2m24:9[22m[39m
+[90m [2m❯[22m addContactTagIfAbsent src/lib/contacts/tag-write.ts:[2m46:9[22m[39m
+[90m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m62:18[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/tag-write.test.ts[2m > [22maddContactTagIfAbsent[2m > [22mtreats an error-free insert as successful even without a returned row
+[31m[1mAssertionError[22m: promise rejected "MongooseError: The `uri` parameter to `op…" instead of resolving[39m
+[36m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m68:6[22m[39m
+    [90m 66|[39m     [35mawait[39m [34mexpect[39m(
+    [90m 67|[39m       [34maddContactTagIfAbsent[39m(input)
+    [90m 68|[39m     )[33m.[39mresolves[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m      [31m^[39m
+    [90m 69|[39m   })[33m;[39m
+    [90m 70|[39m
+
+[31m[1mCaused by: MongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+[90m [2m❯[22m assertContactAndTagOwnership src/lib/contacts/tag-write.ts:[2m24:9[22m[39m
+[90m [2m❯[22m addContactTagIfAbsent src/lib/contacts/tag-write.ts:[2m46:9[22m[39m
+[90m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m67:7[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/tag-write.test.ts[2m > [22maddContactTagIfAbsent[2m > [22mtreats a unique violation as an idempotent duplicate
+[31m[1mAssertionError[22m: promise rejected "MongooseError: The `uri` parameter to `op…" instead of resolving[39m
+[36m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m76:47[22m[39m
+    [90m 74|[39m       insertError[33m:[39m { code[33m:[39m [32m'23505'[39m[33m,[39m message[33m:[39m [32m'duplicate key'[39m }[33m,[39m
+    [90m 75|[39m     })[33m;[39m
+    [90m 76|[39m     [35mawait[39m [34mexpect[39m([34maddContactTagIfAbsent[39m(input))[33m.[39mresolves[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   |[39m                                               [31m^[39m
+    [90m 77|[39m   })[33m;[39m
+    [90m 78|[39m
+
+[31m[1mCaused by: MongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+[90m [2m❯[22m assertContactAndTagOwnership src/lib/contacts/tag-write.ts:[2m24:9[22m[39m
+[90m [2m❯[22m addContactTagIfAbsent src/lib/contacts/tag-write.ts:[2m46:9[22m[39m
+[90m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m76:18[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/tag-write.test.ts[2m > [22maddContactTagIfAbsent[2m > [22mrefuses contacts and tags outside the account
+[31m[1mAssertionError[22m: expected MongooseError: The `uri` parameter to `op… to match object { status: 404 }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {[39m
+[32m-   "status": 404,[39m
+[31m+ MongooseError {[39m
+[31m+   "message": "The `uri` parameter to `openUri()` must be a string, got \"undefined\". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m82:6[22m[39m
+    [90m 80|[39m     [35mawait[39m [34mexpect[39m(
+    [90m 81|[39m       [34maddContactTagIfAbsent[39m(input)
+    [90m 82|[39m     )[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ status[33m:[39m [34m404[39m })[33m;[39m
+    [90m   |[39m      [31m^[39m
+    [90m 83|[39m     [35mawait[39m [34mexpect[39m(
+    [90m 84|[39m       [34maddContactTagIfAbsent[39m(input)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/contacts/tag-write.test.ts[2m > [22maddContactTagIfAbsent[2m > [22msurfaces non-duplicate insert failures
+[31m[1mAssertionError[22m: expected [Function] to throw error including 'Failed to add contact tag: permission…' but got 'The `uri` parameter to `openUri()` mu…'[39m
+
+Expected: [32m"Failed to add contact tag: permission denied"[39m
+Received: [31m"The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string."[39m
+
+[36m [2m❯[22m src/lib/contacts/tag-write.test.ts:[2m93:47[22m[39m
+    [90m 91|[39m       insertError[33m:[39m { code[33m:[39m [32m'42501'[39m[33m,[39m message[33m:[39m [32m'permission denied'[39m }[33m,[39m
+    [90m 92|[39m     })[33m;[39m
+    [90m 93|[39m     [35mawait[39m [34mexpect[39m([34maddContactTagIfAbsent[39m(input))[33m.[39mrejects[33m.[39m[34mtoThrow[39m(
+    [90m   |[39m                                               [31m^[39m
+    [90m 94|[39m       [32m'Failed to add contact tag: permission denied'[39m
+    [90m 95|[39m     )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/resolve-conversation.test.ts[2m > [22mresolveConversationByPhone[2m > [22mfails with whatsapp_not_configured when no config owner exists
+[31m[1mAssertionError[22m: expected undefined to be 'whatsapp_not_configured' // Object.is equality[39m
+
+[32m- Expected:[39m
+"whatsapp_not_configured"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m128:24[22m[39m
+    [90m126|[39m     [35mawait[39m [34mresolveConversationByPhone[39m([32m'acct'[39m[33m,[39m [32m'+14155550123'[39m)[33m.[39m[35mcatch[39m(
+    [90m127|[39m       (e[33m:[39m [33mSendMessageError[39m) [33m=>[39m {
+    [90m128|[39m         [34mexpect[39m(e[33m.[39mcode)[33m.[39m[34mtoBe[39m([32m'whatsapp_not_configured'[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m129|[39m         [34mexpect[39m(e[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m130|[39m       }
+[90m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m126:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/resolve-conversation.test.ts[2m > [22mresolveConversationByPhone[2m > [22mreturns the existing contact + conversation without creating
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m WhatsappConfigRepository.findByAccountId src/lib/mongodb/repositories/WhatsappConfigRepository.ts:[2m11:11[22m[39m
+[90m [2m❯[22m resolveConversationByPhone src/lib/whatsapp/resolve-conversation.ts:[2m59:49[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m143:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/resolve-conversation.test.ts[2m > [22mresolveConversationByPhone[2m > [22mcreates contact + conversation when none exist
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m WhatsappConfigRepository.findByAccountId src/lib/mongodb/repositories/WhatsappConfigRepository.ts:[2m11:11[22m[39m
+[90m [2m❯[22m resolveConversationByPhone src/lib/whatsapp/resolve-conversation.ts:[2m59:49[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m162:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/resolve-conversation.test.ts[2m > [22mresolveConversationByPhone[2m > [22mre-resolves an existing contact when the insert loses a unique race
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m WhatsappConfigRepository.findByAccountId src/lib/mongodb/repositories/WhatsappConfigRepository.ts:[2m11:11[22m[39m
+[90m [2m❯[22m resolveConversationByPhone src/lib/whatsapp/resolve-conversation.ts:[2m59:49[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m184:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/resolve-conversation.test.ts[2m > [22mresolveConversationByPhone[2m > [22mre-resolves the conversation when the insert loses a unique race
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m WhatsappConfigRepository.findByAccountId src/lib/mongodb/repositories/WhatsappConfigRepository.ts:[2m11:11[22m[39m
+[90m [2m❯[22m resolveConversationByPhone src/lib/whatsapp/resolve-conversation.ts:[2m59:49[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/resolve-conversation.test.ts:[2m201:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — param validation (pre-DB)[2m > [22mallows a long "caption" on audio (audio carries none) — so it reaches the DB
+[31m[1mAssertionError[22m: expected [Function] to throw error including 'reached DB' but got 'The `uri` parameter to `openUri()` mu…'[39m
+
+Expected: [32m"reached DB"[39m
+Received: [31m"The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string."[39m
+
+[36m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m153:6[22m[39m
+    [90m151|[39m         contentText[33m:[39m [32m'a'[39m[33m.[39m[34mrepeat[39m([34m2000[39m)[33m,[39m
+    [90m152|[39m       })
+    [90m153|[39m     )[33m.[39mrejects[33m.[39m[34mtoThrow[39m([32m'reached DB'[39m)[33m;[39m
+    [90m   |[39m      [31m^[39m
+    [90m154|[39m     [34mexpect[39m(spy)[33m.[39m[34mtoHaveBeenCalledWith[39m([32m'conversations'[39m)[33m;[39m
+    [90m155|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — template persistence (#483)[2m > [22mstores the substituted body when the caller sends no text
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m Module.sendMessageToConversation src/lib/whatsapp/send-message.ts:[2m230:9[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m288:26[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — template persistence (#483)[2m > [22mreads body values out of the structured params shape too
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m Module.sendMessageToConversation src/lib/whatsapp/send-message.ts:[2m230:9[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m312:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — template persistence (#483)[2m > [22mdoes not override the composer's pre-rendered text
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m Module.sendMessageToConversation src/lib/whatsapp/send-message.ts:[2m230:9[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m325:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — template persistence (#483)[2m > [22msends the local row's language when the caller names none
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m Module.sendMessageToConversation src/lib/whatsapp/send-message.ts:[2m230:9[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m338:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/whatsapp/send-message.test.ts[2m > [22msendMessageToConversation — template persistence (#483)[2m > [22mleaves content_text null when the account has no local template row
+[31m[1mMongooseError[22m: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.[39m
+[90m [2m❯[22m NativeConnection.createClient node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:[2m234:11[22m[39m
+[90m [2m❯[22m NativeConnection.openUri node_modules/mongoose/lib/connection.js:[2m1081:34[22m[39m
+[90m [2m❯[22m Mongoose.connect node_modules/mongoose/lib/mongoose.js:[2m475:15[22m[39m
+[36m [2m❯[22m connectToDatabase src/lib/mongodb/client.ts:[2m39:31[22m[39m
+    [90m 37|[39m     }
+    [90m 38|[39m
+    [90m 39|[39m     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoo…
+    [90m   |[39m                               [31m^[39m
+    [90m 40|[39m       [35mreturn[39m mongoose
+    [90m 41|[39m     })
+[90m [2m❯[22m Module.sendMessageToConversation src/lib/whatsapp/send-message.ts:[2m230:9[22m[39m
+[90m [2m❯[22m src/lib/whatsapp/send-message.test.ts:[2m354:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/api/v1/contacts.test.ts[2m > [22mserializeContact[2m > [22mflattens contact_tags(tags(*)) onto a tags array and nulls missing fields
+[31m[1mAssertionError[22m: expected { id: 'c1', …(8) } to deeply equal { id: 'c1', …(8) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -4,14 +4,8 @@[39m
+[2m    "created_at": "2026-01-01T00:00:00Z",[22m
+[2m    "email": null,[22m
+[2m    "id": "c1",[22m
+[2m    "name": "Jane",[22m
+[2m    "phone": "+14155550123",[22m
+[32m-   "tags": [[39m
+[32m-     {[39m
+[32m-       "color": "#fff",[39m
+[32m-       "id": "t1",[39m
+[32m-       "name": "vip",[39m
+[32m-     },[39m
+[32m-   ],[39m
+[31m+   "tags": [],[39m
+[2m    "updated_at": "2026-01-02T00:00:00Z",[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/lib/api/v1/contacts.test.ts:[2m26:35[22m[39m
+    [90m 24|[39m       ][33m,[39m
+    [90m 25|[39m     }[33m;[39m
+    [90m 26|[39m     [34mexpect[39m([34mserializeContact[39m(row))[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                   [31m^[39m
+    [90m 27|[39m       id[33m:[39m [32m'c1'[39m[33m,[39m
+    [90m 28|[39m       phone[33m:[39m [32m'+14155550123'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/lib/api/v1/contacts.test.ts[2m > [22mfindOrCreateContact[2m > [22mrejects a non-E.164 phone with a 400 ContactError
+[31m[1mAssertionError[22m: expected MongooseError: The `uri` parameter to `op… to match object { status: 400 }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {[39m
+[32m-   "status": 400,[39m
+[31m+ MongooseError {[39m
+[31m+   "message": "The `uri` parameter to `openUri()` must be a string, got \"undefined\". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/lib/api/v1/contacts.test.ts:[2m60:6[22m[39m
+    [90m 58|[39m     [35mawait[39m [34mexpect[39m(
+    [90m 59|[39m       [34mfindOrCreateContact[39m([32m'acc'[39m[33m,[39m [32m'user'[39m[33m,[39m { phone[33m:[39m [32m'not-a-number'[39m })
+    [90m 60|[39m     )[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ status[33m:[39m [34m400[39m })[33m;[39m
+    [90m   |[39m      [31m^[39m
+    [90m 61|[39m     [35mawait[39m [34mexpect[39m(
+    [90m 62|[39m       [34mfindOrCreateContact[39m([32m'acc'[39m[33m,[39m [32m'user'[39m[33m,[39m { phone[33m:[39m [32m'not-a-number'[39m })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/app/api/contacts/[id]/tags/route.test.ts[2m > [22m/api/contacts/[id]/tags[2m > [22mrequires an agent and dispatches a newly-added tag
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ { …(4) } ][90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[2m    {[22m
+[2m      "accountId": "account-1",[22m
+[2m      "contactId": "contact-1",[22m
+[32m-     "db": {[90m
+[32m-       "name": "scoped-client",[90m
+[32m-     },[90m
+[2m      "tagId": "tag-1",[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m src/app/api/contacts/[id]/tags/route.test.ts:[2m66:23[22m[39m
+    [90m 64|[39m     [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 65|[39m     [34mexpect[39m(mocks[33m.[39mrequireRole)[33m.[39m[34mtoHaveBeenCalledWith[39m([32m'agent'[39m)[33m;[39m
+    [90m 66|[39m     [34mexpect[39m(mocks[33m.[39madd)[33m.[39m[34mtoHaveBeenCalledWith[39m({
+    [90m   |[39m                       [31m^[39m
+    [90m 67|[39m       db[33m:[39m context[33m.[39msupabase[33m,[39m
+    [90m 68|[39m       accountId[33m:[39m [32m'account-1'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/23]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/app/api/contacts/[id]/tags/route.test.ts[2m > [22m/api/contacts/[id]/tags[2m > [22mremoves a tag through the same account-scoped route
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ { name: 'scoped-client' }, …(1) ][90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[2m    {[22m
+[32m-     "name": "scoped-client",[90m
+[32m-   },[90m
+[32m-   {[90m
+[2m      "accountId": "account-1",[22m
+[2m      "contactId": "contact-1",[22m
+[2m      "tagId": "tag-1",[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m src/app/api/contacts/[id]/tags/route.test.ts:[2m89:26[22m[39m
+    [90m 87|[39m
+    [90m 88|[39m     [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 89|[39m     [34mexpect[39m(mocks[33m.[39mremove)[33m.[39m[34mtoHaveBeenCalledWith[39m(context[33m.[39msupabase[33m,[39m {
+    [90m   |[39m                          [31m^[39m
+    [90m 90|[39m       accountId[33m:[39m [32m'account-1'[39m[33m,[39m
+    [90m 91|[39m       contactId[33m:[39m [32m'contact-1'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/23]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m43 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (52)[39m
+[2m      Tests [22m [1m[31m23 failed[39m[22m[2m | [22m[1m[32m479 passed[39m[22m[2m | [22m[33m27 skipped[39m[90m (529)[39m
+[2m   Start at [22m 01:11:45
+[2m   Duration [22m 2.54s[2m (transform 1.29s, setup 0ms, import 6.67s, tests 1.85s, environment 3ms)[22m
+

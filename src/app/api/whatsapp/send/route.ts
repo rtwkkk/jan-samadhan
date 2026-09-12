@@ -1,5 +1,8 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server';
+import { ContactRepository } from '@/lib/mongodb/repositories/ContactRepository';
+import { ConversationRepository } from '@/lib/mongodb/repositories/ConversationRepository';
+import crypto from 'crypto';
+
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import {
   checkRateLimit,
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
     // still delivered a real WhatsApp message to the customer and merely
     // failed to record it (surfacing as "sent to Meta but failed to save
     // to DB"). RLS can't un-send that, so the role check belongs here.
-    const { supabase, accountId, userId } = await requireRole('agent')
+    const { accountId, userId } = await requireRole('agent')
 
     // Per-user rate limit. Bucket key is scoped to this route so
     // `/broadcast` has an independent budget.
@@ -95,12 +98,8 @@ export async function POST(request: Request) {
     let conversationId: string | null = null
 
     if (conversationIdInput) {
-      const { data, error: convError } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('id', conversationIdInput)
-        .eq('account_id', accountId)
-        .single()
+      const data = await ConversationRepository.findById(accountId, conversationIdInput);
+      const convError = !data ? new Error('Not found') : null;
 
       if (convError || !data) {
         return NextResponse.json(
@@ -108,18 +107,13 @@ export async function POST(request: Request) {
           { status: 404 }
         )
       }
-      conversationId = data.id
+      conversationId = data._id
     } else {
       // contact_id path: verify the contact is in this account first so a
       // caller can't open a conversation against someone else's contact.
-      const { data: contactRow, error: contactErr } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('id', contact_id)
-        .eq('account_id', accountId)
-        .maybeSingle()
+      const contactRow = await ContactRepository.findById(accountId, contact_id);
 
-      if (contactErr || !contactRow) {
+      if (!contactRow) {
         return NextResponse.json(
           { error: 'Contact not found' },
           { status: 404 }
@@ -127,7 +121,6 @@ export async function POST(request: Request) {
       }
 
       const resolved = await findOrCreateConversation(
-        supabase,
         accountId,
         userId,
         contact_id
@@ -153,7 +146,7 @@ export async function POST(request: Request) {
     // `SendMessageError` carries a machine code + HTTP status; the
     // dashboard maps it to the internal `{ error }` shape.
     try {
-      const result = await sendMessageToConversation(supabase, accountId, {
+      const result = await sendMessageToConversation(accountId, {
         conversationId,
         messageType: message_type,
         contentText: content_text,
@@ -189,7 +182,7 @@ export async function POST(request: Request) {
   }
 }
 
-type SendSupabase = Awaited<ReturnType<typeof createClient>>
+
 
 /**
  * Return the contact's conversation id in this account, creating one if
@@ -199,34 +192,31 @@ type SendSupabase = Awaited<ReturnType<typeof createClient>>
  * policy requires account agent membership, which the caller already is.
  */
 async function findOrCreateConversation(
-  supabase: SendSupabase,
   accountId: string,
   userId: string,
   contactId: string,
 ): Promise<string | null> {
-  const { data: existing } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('account_id', accountId)
-    .eq('contact_id', contactId)
-    .maybeSingle()
+  const existing = await ConversationRepository.findByContactId(accountId, contactId);
 
-  if (existing) return existing.id
+  if (existing) return existing._id;
 
-  const { data: created, error } = await supabase
-    .from('conversations')
-    .insert({
-      account_id: accountId,
-      user_id: userId,
-      contact_id: contactId,
-    })
-    .select('id')
-    .single()
-
-  if (error) {
-    console.error('Error creating conversation for contact send:', error.message)
-    return null
+  try {
+    const created = await ConversationRepository.create({
+      _id: crypto.randomUUID(),
+      accountId,
+      contactId,
+      status: 'open',
+      unreadCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return created._id;
+  } catch (error: any) {
+    if (error.code === 11000) {
+      const raced = await ConversationRepository.findByContactId(accountId, contactId);
+      if (raced) return raced._id;
+    }
+    console.error('Error creating conversation for contact send:', error.message);
+    return null;
   }
-
-  return created.id
 }

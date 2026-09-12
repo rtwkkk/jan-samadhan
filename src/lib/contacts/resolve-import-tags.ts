@@ -1,4 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { TagRepository } from '@/lib/mongodb/repositories/TagRepository';
+import { ContactRepository } from '@/lib/mongodb/repositories/ContactRepository';
+import { connectToDatabase } from '@/lib/mongodb/client';
 
 const DEFAULT_TAG_COLOR = '#3b82f6';
 
@@ -14,12 +17,8 @@ export interface ResolveImportTagsResult {
  * are matched case-insensitively. Missing names are created when
  * `canCreateTags` is true (admin+); otherwise they are reported in
  * `skippedNames`.
- *
- * Unlike the manual contact form (existing tags only), import may
- * auto-create missing tag definitions for admin+ callers.
  */
 export async function resolveImportTagIds(
-  supabase: SupabaseClient,
   params: {
     accountId: string;
     userId: string;
@@ -30,6 +29,8 @@ export async function resolveImportTagIds(
 ): Promise<ResolveImportTagsResult> {
   const { accountId, userId, tagNames, canCreateTags } = params;
   const defaultColor = params.defaultColor ?? DEFAULT_TAG_COLOR;
+
+  await connectToDatabase();
 
   const uniqueNames: string[] = [];
   const seen = new Set<string>();
@@ -46,17 +47,12 @@ export async function resolveImportTagIds(
     return { tagIdByKey: new Map(), skippedNames: [] };
   }
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('tags')
-    .select('id, name')
-    .eq('account_id', accountId);
-
-  if (fetchError) throw fetchError;
+  const existing = await TagRepository.findMany(accountId);
 
   const tagIdByKey = new Map<string, string>();
-  for (const tag of existing ?? []) {
+  for (const tag of existing) {
     const key = tag.name.trim().toLowerCase();
-    if (!tagIdByKey.has(key)) tagIdByKey.set(key, tag.id);
+    if (!tagIdByKey.has(key)) tagIdByKey.set(key, tag._id);
   }
 
   const skippedNames: string[] = [];
@@ -70,22 +66,18 @@ export async function resolveImportTagIds(
   }
 
   if (toCreate.length > 0) {
-    const { data: created, error: createError } = await supabase
-      .from('tags')
-      .insert(
-        toCreate.map((name) => ({
-          user_id: userId,
-          account_id: accountId,
-          name,
-          color: defaultColor,
-        }))
-      )
-      .select('id, name');
+    const created = await TagRepository.createMany(
+      toCreate.map((name) => ({
+        _id: crypto.randomUUID(),
+        userId,
+        accountId,
+        name,
+        color: defaultColor,
+      }))
+    );
 
-    if (createError) throw createError;
-
-    for (const tag of created ?? []) {
-      tagIdByKey.set(tag.name.trim().toLowerCase(), tag.id);
+    for (const tag of created) {
+      tagIdByKey.set(tag.name.trim().toLowerCase(), tag._id);
     }
   }
 
@@ -98,42 +90,32 @@ export interface ContactTagAssignment {
 }
 
 /**
- * Insert contact_tags rows for imported contacts (ignores duplicates).
- *
- * Returns the number of contact–tag pairs *requested* for upsert, not
- * rows actually inserted — `ignoreDuplicates` can drop pairs that already
- * exist without changing the returned count.
+ * Assign tags to imported contacts using MongoDB.
+ * Uses $addToSet to avoid duplicates.
  */
 export async function assignImportedContactTags(
-  supabase: SupabaseClient,
+  accountId: string,
   assignments: ContactTagAssignment[],
   tagIdByKey: Map<string, string>
 ): Promise<number> {
-  const rows: { contact_id: string; tag_id: string }[] = [];
+  await connectToDatabase();
 
-  for (const { contactId, tagNames } of assignments) {
-    const assignedTagIds = new Set<string>();
-    for (const name of tagNames) {
-      const tagId = tagIdByKey.get(name.trim().toLowerCase());
-      if (!tagId || assignedTagIds.has(tagId)) continue;
-      assignedTagIds.add(tagId);
-      rows.push({ contact_id: contactId, tag_id: tagId });
-    }
-  }
-
-  if (rows.length === 0) return 0;
-
-  const chunkSize = 100;
   let assigned = 0;
 
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    const { error } = await supabase.from('contact_tags').upsert(chunk, {
-      onConflict: 'contact_id,tag_id',
-      ignoreDuplicates: true,
-    });
-    if (error) throw error;
-    assigned += chunk.length;
+  for (const { contactId, tagNames } of assignments) {
+    const tagIds: string[] = [];
+    const assignedSet = new Set<string>();
+    for (const name of tagNames) {
+      const tagId = tagIdByKey.get(name.trim().toLowerCase());
+      if (!tagId || assignedSet.has(tagId)) continue;
+      assignedSet.add(tagId);
+      tagIds.push(tagId);
+    }
+
+    if (tagIds.length > 0) {
+      await ContactRepository.addTags(accountId, contactId, tagIds);
+      assigned += tagIds.length;
+    }
   }
 
   return assigned;

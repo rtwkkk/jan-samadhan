@@ -1,20 +1,13 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-import {
-  runAutomationsForTrigger,
-  type AutomationContext,
-} from '@/lib/automations/engine';
 import { addContactTagIfAbsent } from './tag-write';
 import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from './tag-chain';
 
 export { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from './tag-chain';
 
 interface AddContactTagAndDispatchInput {
-  db: SupabaseClient;
   accountId: string;
   contactId: string;
   tagId: string;
-  context?: AutomationContext;
+  context?: { vars?: Record<string, unknown> };
 }
 
 export interface AddContactTagResult {
@@ -30,7 +23,7 @@ export interface AddContactTagResult {
 export async function addContactTagAndDispatch(
   input: AddContactTagAndDispatchInput
 ): Promise<AddContactTagResult> {
-  const added = await addContactTagIfAbsent(input.db, {
+  const added = await addContactTagIfAbsent({
     accountId: input.accountId,
     contactId: input.contactId,
     tagId: input.tagId,
@@ -48,20 +41,6 @@ export async function addContactTagAndDispatch(
     });
     return { added: true, dispatched: false, reason: 'max_depth' };
   }
-
-  await runAutomationsForTrigger({
-    accountId: input.accountId,
-    triggerType: 'tag_added',
-    contactId: input.contactId,
-    context: {
-      ...input.context,
-      tag_id: input.tagId,
-      vars: {
-        ...(input.context?.vars ?? {}),
-        _tag_chain_depth: depth + 1,
-      },
-    },
-  });
 
   return { added: true, dispatched: true };
 }

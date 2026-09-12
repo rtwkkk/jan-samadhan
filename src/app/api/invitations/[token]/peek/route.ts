@@ -29,7 +29,7 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
+
 
 /**
  * Best-effort client IP. The `x-forwarded-for` header is what
@@ -68,20 +68,13 @@ export async function GET(
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("peek_invitation", {
-    p_token_hash: hashInviteToken(token),
-  });
-
-  if (error) {
-    console.error("[peek] rpc error:", error);
-    return NextResponse.json(
-      { ok: false, reason: "server_error" },
-      { status: 500 },
-    );
-  }
+  
 
   // The RPC always returns a json object — either ok:true with
   // metadata or ok:false with a reason. Forward verbatim.
+  
+  const { InvitationService } = await import('@/lib/auth/invitation-service');
+  const data = await InvitationService.peek(hashInviteToken(token));
   return NextResponse.json(data);
+
 }

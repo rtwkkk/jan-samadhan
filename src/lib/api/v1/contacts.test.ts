@@ -1,5 +1,7 @@
+import { vi } from "vitest";
+vi.mock("@/lib/mongodb/client", () => ({ connectToDatabase: vi.fn().mockResolvedValue(true) }));
+
 import { describe, it, expect } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   serializeContact,
@@ -8,7 +10,7 @@ import {
 } from './contacts';
 
 describe('serializeContact', () => {
-  it('flattens contact_tags(tags(*)) onto a tags array and nulls missing fields', () => {
+  it('flattens tags(tags(*)) onto a tags array and nulls missing fields', () => {
     const row = {
       id: 'c1',
       phone: '+14155550123',
@@ -18,9 +20,8 @@ describe('serializeContact', () => {
       avatar_url: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-02T00:00:00Z',
-      contact_tags: [
-        { tags: { id: 't1', name: 'vip', color: '#fff' } },
-        { tags: null }, // orphaned join — dropped
+      tags: [
+        { id: 't1', name: 'vip', color: '#fff' },
       ],
     };
     expect(serializeContact(row)).toEqual({
@@ -36,7 +37,7 @@ describe('serializeContact', () => {
     });
   });
 
-  it('tolerates a row with no contact_tags key', () => {
+  it('tolerates a row with no tags key', () => {
     const row = {
       id: 'c2',
       phone: '+1',
@@ -52,14 +53,14 @@ describe('serializeContact', () => {
 });
 
 describe('findOrCreateContact', () => {
-  const noopDb = {} as SupabaseClient;
+  const noopDb = {} as any;
 
   it('rejects a non-E.164 phone with a 400 ContactError', async () => {
     await expect(
-      findOrCreateContact(noopDb, 'acc', 'user', { phone: 'not-a-number' })
+      findOrCreateContact('acc', 'user', { phone: 'not-a-number' })
     ).rejects.toMatchObject({ status: 400 });
     await expect(
-      findOrCreateContact(noopDb, 'acc', 'user', { phone: 'not-a-number' })
+      findOrCreateContact('acc', 'user', { phone: 'not-a-number' })
     ).rejects.toBeInstanceOf(ContactError);
   });
 });

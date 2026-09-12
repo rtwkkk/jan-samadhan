@@ -5,11 +5,10 @@
 //   POST — mint a new key.
 //
 // These are the *dashboard* endpoints for managing keys, so they
-// authenticate the normal way (cookie session) and go through the
-// RLS client. Listing is open to any member (viewer+) — the roster
-// is not secret; the secret (the key itself) is never in it. Minting
-// is admin+ (a key hands out capabilities), enforced by both
-// `requireRole('admin')` here and the `api_keys_insert` RLS policy.
+// authenticate the normal way (cookie session). Listing is open to 
+// any member (viewer+) — the roster is not secret; the secret (the key itself) 
+// is never in it. Minting is admin+ (a key hands out capabilities), enforced by 
+// `requireRole('admin')`.
 //
 // IMPORTANT: the plaintext key is returned exactly ONCE, in the POST
 // response. We persist only its SHA-256 hash, so neither GET nor any
@@ -31,38 +30,31 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from '@/lib/rate-limit';
+import { ApiKeyRepository } from '@/lib/mongodb/repositories/ApiKeyRepository';
+import { randomUUID } from 'node:crypto';
 
 const MAX_NAME_LEN = 80;
-// Hard ceiling on caller-supplied expiry (1 year), mirroring the
-// invite-link clamp. NULL/absent = never expires.
 const MAX_EXPIRY_DAYS = 365;
-
-// Columns safe to expose. `key_hash` is deliberately excluded — it
-// never leaves the server.
-const SAFE_COLUMNS =
-  'id, name, key_prefix, scopes, last_used_at, expires_at, revoked_at, created_at';
 
 export async function GET() {
   try {
-    // Any member can view the roster (RLS allows it); we just need a
-    // resolved account context.
     const ctx = await getCurrentAccount();
 
-    const { data, error } = await ctx.supabase
-      .from('api_keys')
-      .select(SAFE_COLUMNS)
-      .eq('account_id', ctx.accountId)
-      .order('created_at', { ascending: false });
+    const keys = await ApiKeyRepository.listByAccountId(ctx.accountId);
 
-    if (error) {
-      console.error('[GET /api/account/api-keys] fetch error:', error);
-      return NextResponse.json(
-        { error: 'Failed to load API keys' },
-        { status: 500 }
-      );
-    }
+    // Map Mongoose documents to the expected API shape
+    const data = keys.map(k => ({
+      id: k._id,
+      name: k.name,
+      key_prefix: k.keyPrefix,
+      scopes: k.scopes,
+      last_used_at: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+      expires_at: k.expiresAt ? k.expiresAt.toISOString() : null,
+      revoked_at: k.revokedAt ? k.revokedAt.toISOString() : null,
+      created_at: k.createdAt.toISOString()
+    }));
 
-    return NextResponse.json({ keys: data ?? [] });
+    return NextResponse.json({ keys: data });
   } catch (err) {
     return toErrorResponse(err);
   }
@@ -98,8 +90,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Scopes default to none if omitted — that yields a key that can
-    // only call the scope-free endpoints (e.g. GET /api/v1/me).
     const scopes = normalizeScopes(body?.scopes ?? []);
     if (scopes === null) {
       return NextResponse.json(
@@ -108,7 +98,7 @@ export async function POST(request: Request) {
       );
     }
 
-    let expiresAt: string | null = null;
+    let expiresAt: Date | undefined = undefined;
     const rawExpiry = body?.expiresInDays;
     if (
       typeof rawExpiry === 'number' &&
@@ -116,38 +106,36 @@ export async function POST(request: Request) {
       rawExpiry > 0
     ) {
       const days = Math.min(Math.floor(rawExpiry), MAX_EXPIRY_DAYS);
-      expiresAt = new Date(
-        Date.now() + days * 24 * 60 * 60 * 1000
-      ).toISOString();
+      expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     }
 
     const { plaintext, hash, prefix } = generateApiKey();
 
-    const { data, error } = await ctx.supabase
-      .from('api_keys')
-      .insert({
-        account_id: ctx.accountId,
-        created_by: ctx.userId,
-        name: rawName,
-        key_prefix: prefix,
-        key_hash: hash,
-        scopes,
-        expires_at: expiresAt,
-      })
-      .select(SAFE_COLUMNS)
-      .single();
+    const created = await ApiKeyRepository.create({
+      _id: randomUUID(),
+      accountId: ctx.accountId,
+      createdBy: ctx.userId,
+      name: rawName,
+      keyPrefix: prefix,
+      keyHash: hash,
+      scopes,
+      expiresAt,
+    });
 
-    if (error || !data) {
-      console.error('[POST /api/account/api-keys] insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create API key' },
-        { status: 500 }
-      );
-    }
+    const keyData = {
+      id: created._id,
+      name: created.name,
+      key_prefix: created.keyPrefix,
+      scopes: created.scopes,
+      last_used_at: null,
+      expires_at: created.expiresAt ? created.expiresAt.toISOString() : null,
+      revoked_at: null,
+      created_at: created.createdAt.toISOString()
+    };
 
     return NextResponse.json(
       {
-        key: data,
+        key: keyData,
         // Plaintext — shown to the admin exactly once.
         plaintext,
       },

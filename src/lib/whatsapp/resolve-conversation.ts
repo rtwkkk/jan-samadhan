@@ -18,9 +18,11 @@
 // them to the WhatsApp config owner — a stable account-level default.
 // ============================================================
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe';
+import { ContactRepository } from '@/lib/mongodb/repositories/ContactRepository';
+import { ConversationRepository } from '@/lib/mongodb/repositories/ConversationRepository';
+import { WhatsappConfigRepository } from '@/lib/mongodb/repositories/WhatsappConfigRepository';
+
 import { sanitizePhoneForMeta, isValidE164 } from '@/lib/whatsapp/phone-utils';
 import { SendMessageError } from '@/lib/whatsapp/send-message';
 import { resolveAuditUserId, ContactError } from '@/lib/api/v1/contacts';
@@ -39,7 +41,6 @@ export interface ResolvedConversation {
  * WhatsApp config, or a DB failure.
  */
 export async function resolveConversationByPhone(
-  db: SupabaseClient,
   accountId: string,
   phone: string,
   name?: string | null
@@ -55,11 +56,7 @@ export async function resolveConversationByPhone(
 
   // Fail fast (and create nothing) when the account has no WhatsApp
   // connected — the same error the send would raise anyway.
-  const { data: config } = await db
-    .from('whatsapp_config')
-    .select('id')
-    .eq('account_id', accountId)
-    .maybeSingle();
+  const config = await WhatsappConfigRepository.findByAccountId(accountId);
   if (!config) {
     throw new SendMessageError(
       'whatsapp_not_configured',
@@ -68,15 +65,9 @@ export async function resolveConversationByPhone(
     );
   }
 
-  // Audit user for created rows = the single account-wide default used
-  // by every public-API write (see resolveAuditUserId), so a contact
-  // created here is attributed identically to one created via
-  // POST /api/v1/contacts. resolveAuditUserId throws ContactError only
-  // if the owner can't be resolved — remap it to the send error family
-  // the callers already handle.
   let ownerUserId: string;
   try {
-    ownerUserId = await resolveAuditUserId(db, accountId);
+    ownerUserId = await resolveAuditUserId(accountId);
   } catch (err) {
     if (err instanceof ContactError) {
       throw new SendMessageError('db_error', err.message, err.status);
@@ -88,62 +79,48 @@ export async function resolveConversationByPhone(
   let contactId: string;
   let contactCreated = false;
 
-  const existing = await findExistingContact(db, accountId, sanitized);
+  const existing = await findExistingContact(accountId, sanitized);
   if (existing) {
     contactId = existing.id;
     if (name && name !== existing.name) {
-      await db
-        .from('contacts')
-        .update({ name, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
+      await ContactRepository.updateById(accountId, existing.id, { name });
     }
   } else {
-    const { data: created, error: createErr } = await db
-      .from('contacts')
-      .insert({
-        account_id: accountId,
-        user_id: ownerUserId,
+    try {
+      const created = await ContactRepository.create({
+        _id: crypto.randomUUID(),
+        accountId,
+        userId: ownerUserId,
         phone: sanitized,
         name: name || sanitized,
-      })
-      .select('id')
-      .single();
-
-    if (createErr || !created) {
+      });
+      contactId = created._id;
+      contactCreated = true;
+    } catch (createErr: unknown) {
       // Lost a race against a concurrent inbound/API create — the
       // unique index (migration 022) rejected the duplicate. Re-resolve.
       if (isUniqueViolation(createErr)) {
-        const raced = await findExistingContact(db, accountId, sanitized);
+        const raced = await findExistingContact(accountId, sanitized);
         if (raced) {
           contactId = raced.id;
+          if (name && name !== raced.name) {
+            await ContactRepository.updateById(accountId, raced.id, { name });
+          }
         } else {
-          throw new SendMessageError(
-            'db_error',
-            'Failed to create contact',
-            500
+          console.error(
+            '[webhook] Contact creation unique violation, but could not find raced contact',
+            { accountId, phone: sanitized }
           );
+          throw createErr;
         }
       } else {
-        console.error(
-          '[resolve-conversation] contact create error:',
-          createErr
-        );
-        throw new SendMessageError('db_error', 'Failed to create contact', 500);
+        throw createErr;
       }
-    } else {
-      contactId = created.id;
-      contactCreated = true;
     }
   }
 
   // ---- conversation -------------------------------------------
-  // One conversation per (account, contact) — same convention as the
-  // webhook. Order oldest-first and take one row rather than
-  // `.maybeSingle()`, which errors on ≥2 rows: if duplicates predate the
-  // unique index (migration 036), we resolve to the canonical survivor
-  // instead of falling through and creating yet another (issue #363).
   const conversationId = await findOrCreateConversationRow(
-    db,
     accountId,
     contactId,
     ownerUserId
@@ -153,60 +130,38 @@ export async function resolveConversationByPhone(
 }
 
 /**
- * Find (oldest-first) or create the single conversation for
- * `(accountId, contactId)`. Handles the unique-index race the same way
- * the inbound webhook does: on a 23505 from a concurrent create,
- * re-resolve the winning row rather than failing the send.
+ * Find or create the single conversation for `(accountId, contactId)`.
  */
 async function findOrCreateConversationRow(
-  db: SupabaseClient,
   accountId: string,
   contactId: string,
   ownerUserId: string
 ): Promise<string> {
-  const { data: existing, error: findErr } = await db
-    .from('conversations')
-    .select('id')
-    .eq('account_id', accountId)
-    .eq('contact_id', contactId)
-    .order('created_at', { ascending: true })
-    .limit(1);
+  const existing = await ConversationRepository.findByContactId(accountId, contactId);
 
-  if (findErr) {
-    console.error('[resolve-conversation] conversation lookup error:', findErr);
-    throw new SendMessageError('db_error', 'Failed to resolve conversation', 500);
+  if (existing) {
+    return existing._id;
   }
 
-  if (existing && existing.length > 0) {
-    return existing[0].id;
-  }
-
-  const { data: newConv, error: convErr } = await db
-    .from('conversations')
-    .insert({
-      account_id: accountId,
-      user_id: ownerUserId,
-      contact_id: contactId,
-    })
-    .select('id')
-    .single();
-
-  if (convErr || !newConv) {
-    if (isUniqueViolation(convErr)) {
-      const { data: raced } = await db
-        .from('conversations')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('contact_id', contactId)
-        .order('created_at', { ascending: true })
-        .limit(1);
-      if (raced && raced.length > 0) {
-        return raced[0].id;
+  try {
+    const newConv = await ConversationRepository.create({
+      _id: crypto.randomUUID(),
+      accountId,
+      contactId,
+      assignedAgentId: ownerUserId === 'system' ? undefined : ownerUserId,
+      status: 'open',
+      unreadCount: 0
+    });
+    return newConv._id;
+  } catch (convErr: any) {
+    // 11000 is MongoDB duplicate key error code
+    if (convErr.code === 11000) {
+      const raced = await ConversationRepository.findByContactId(accountId, contactId);
+      if (raced) {
+        return raced._id;
       }
     }
     console.error('[resolve-conversation] conversation create error:', convErr);
     throw new SendMessageError('db_error', 'Failed to create conversation', 500);
   }
-
-  return newConv.id;
 }

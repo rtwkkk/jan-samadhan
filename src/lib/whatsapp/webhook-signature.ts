@@ -24,6 +24,10 @@ export function verifyMetaWebhookSignature(
 ): boolean {
   const secret = process.env.META_APP_SECRET
   if (!secret) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[webhook] WARNING: META_APP_SECRET is not set. Bypassing signature verification in development mode.');
+      return true;
+    }
     console.error(
       '[webhook] META_APP_SECRET is not set — rejecting request. ' +
         'Configure the env var (Meta → App Settings → Basic → App Secret) ' +

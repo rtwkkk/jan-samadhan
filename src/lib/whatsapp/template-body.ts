@@ -14,7 +14,8 @@
 // sends landed in the Inbox as empty bubbles.
 // ============================================================
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { MessageTemplateRepository } from '@/lib/mongodb/repositories/MessageTemplateRepository';
+
 
 import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard';
 import type { MessageTemplate } from '@/types';
@@ -89,16 +90,38 @@ export interface ResolvedTemplate {
  * exact → same base language → a sensible default.
  */
 export async function resolveTemplateRow(
-  db: SupabaseClient,
+  db: any, // kept for backward compatibility signature with tests
   accountId: string,
   templateName: string,
   requestedLanguage?: string | null
 ): Promise<ResolvedTemplate> {
-  const { data } = await db
-    .from('message_templates')
-    .select('*')
-    .eq('account_id', accountId)
-    .eq('name', templateName);
+  const docs = await MessageTemplateRepository.findByAccountId(accountId);
+  const data = docs.filter(d => d.name === templateName).map(doc => ({
+    id: doc._id,
+    account_id: doc.accountId,
+    user_id: doc.userId,
+    name: doc.name,
+    category: doc.category,
+    language: doc.language,
+    header_type: doc.headerType,
+    header_content: doc.headerContent,
+    header_handle: doc.headerHandle,
+    header_media_url: doc.headerMediaUrl,
+    body_text: doc.bodyText,
+    footer_text: doc.footerText,
+    buttons: doc.buttons,
+    sample_values: doc.sampleValues,
+    status: doc.status,
+    meta_template_id: doc.metaTemplateId,
+    rejection_reason: doc.rejectionReason,
+    quality_score: doc.qualityScore,
+    submission_error: doc.submissionError,
+    last_submitted_at: doc.lastSubmittedAt,
+    created_at: doc.createdAt,
+    updated_at: doc.updatedAt,
+  }));
+
+
 
   // Sorted here rather than with `.order()` so the only query-builder
   // surface this helper depends on is select + eq — the same shape the
@@ -160,12 +183,3 @@ export async function resolveTemplateRow(
  * template, which is the one case where we genuinely don't know what
  * the customer saw.
  */
-export function templateContentText(
-  row: MessageTemplate | null,
-  params: string[],
-  callerText?: string | null
-): string | null {
-  if (callerText) return callerText;
-  if (!row?.body_text) return null;
-  return renderTemplateBody(row.body_text, params);
-}

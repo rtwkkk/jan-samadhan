@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Plus, Tag as TagIcon, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +43,6 @@ const PRESET_COLORS = [
  */
 export function TagManager() {
   const t = useTranslations('Settings.tagsAndFields');
-  const supabase = createClient();
   const { user, accountId, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -69,13 +67,9 @@ export function TagManager() {
   async function fetchTags(userId: string) {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('tags')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const res = await fetch('/api/tags');
+      if (!res.ok) throw new Error('Failed to fetch tags');
+      const data = await res.json();
       setTags(data || []);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
@@ -98,16 +92,19 @@ export function TagManager() {
         return;
       }
 
-      // account_id is mandatory on every account-scoped insert (NOT
-      // NULL + RLS, no DB default).
-      const { error } = await supabase.from('tags').insert({
-        user_id: user.id,
-        account_id: accountId,
-        name: newTagName.trim(),
-        color: selectedColor,
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTagName.trim(),
+          color: selectedColor,
+        }),
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create tag');
+      }
 
       toast.success(t('tagCreated'));
       setNewTagName('');
@@ -115,7 +112,7 @@ export function TagManager() {
       await fetchTags(user.id);
     } catch (err) {
       console.error('Create error:', err);
-      toast.error(t('failedToCreateTag'));
+      toast.error(err instanceof Error ? err.message : t('failedToCreateTag'));
     } finally {
       setSaving(false);
     }
@@ -131,12 +128,11 @@ export function TagManager() {
 
     try {
       setDeleting(true);
-      const { error } = await supabase
-        .from('tags')
-        .delete()
-        .eq('id', tagToDelete.id);
+      const res = await fetch(`/api/tags/${tagToDelete.id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Failed to delete tag');
 
       toast.success(t('tagDeleted'));
       setTags((prev) => prev.filter((t) => t.id !== tagToDelete.id));

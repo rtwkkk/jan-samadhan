@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
 import { decrypt } from '@/lib/whatsapp/encryption'
 
@@ -17,12 +16,19 @@ export async function GET(
       )
     }
 
-    const supabase = await createClient()
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let accountId_ctx: string;
+  let userId: string;
+  try {
+    const { getCurrentAccount } = await import('@/lib/auth/account');
+    const ctx = await getCurrentAccount();
+    accountId_ctx = ctx.accountId;
+    userId = ctx.userId;
+  } catch (err) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const authError = null;
+  const user = { id: userId };
 
     if (authError || !user) {
       return NextResponse.json(
@@ -31,38 +37,23 @@ export async function GET(
       )
     }
 
-    // Resolve the caller's account_id — whatsapp_config is one-per-
-    // account post-multi-user, so a teammate fetching media for a
-    // conversation in the shared inbox needs the account's config,
-    // not their personal (non-existent) row.
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('account_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    const accountId = profile?.account_id as string | undefined
+    const accountId = accountId_ctx;
     if (!accountId) {
-      return NextResponse.json(
-        { error: 'Your profile is not linked to an account.' },
-        { status: 403 },
-      )
+      return NextResponse.json({ error: 'Your profile is not linked to an account.' }, { status: 403 });
     }
 
-    // Fetch and decrypt WhatsApp config
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('*')
-      .eq('account_id', accountId)
-      .single()
+    // Get WhatsApp Config using existing repository
+    const { WhatsappConfigRepository } = await import('@/lib/mongodb/repositories/WhatsappConfigRepository');
+    const config = await WhatsappConfigRepository.findByAccountId(accountId);
 
-    if (configError || !config) {
+    if (!config || !config.accessToken) {
       return NextResponse.json(
         { error: 'WhatsApp not configured' },
         { status: 400 }
       )
     }
 
-    const accessToken = decrypt(config.access_token)
+    const accessToken = decrypt(config.accessToken)
 
     // Get the download URL from Meta
     const mediaInfo = await getMediaUrl({ mediaId, accessToken })

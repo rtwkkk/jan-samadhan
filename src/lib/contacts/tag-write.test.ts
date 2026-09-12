@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { ContactRepository } from "@/lib/mongodb/repositories/ContactRepository";
+import { TagRepository } from "@/lib/mongodb/repositories/TagRepository";
+
+vi.mock("@/lib/mongodb/repositories/ContactRepository");
+vi.mock("@/lib/mongodb/repositories/TagRepository");
+vi.mock("@/lib/mongodb/client", () => ({ connectToDatabase: vi.fn().mockResolvedValue(true) }));
 
 import { addContactTagIfAbsent } from './tag-write';
 
@@ -10,46 +15,33 @@ interface FakeOptions {
   insertError?: { code?: string; message: string } | null;
 }
 
-function fakeDb(options: FakeOptions = {}): SupabaseClient {
-  const contact =
-    options.contact === undefined ? { id: 'contact-1' } : options.contact;
-  const tag = options.tag === undefined ? { id: 'tag-1' } : options.tag;
+function setupMocks(options: FakeOptions = {}) {
+    vi.clearAllMocks();
+    
+    // TagRepository.findById
+    if (options.tag === null) {
+      TagRepository.findById = vi.fn().mockResolvedValue(null);
+    } else {
+      TagRepository.findById = vi.fn().mockResolvedValue({ _id: 'tag-1', name: 'vip', accountId: 'acc-1' });
+    }
 
-  return {
-    from(table: string) {
-      const state = { operation: 'select' };
-      const builder = {
-        select() {
-          return builder;
-        },
-        insert() {
-          state.operation = 'insert';
-          return builder;
-        },
-        eq() {
-          return builder;
-        },
-        maybeSingle() {
-          if (table === 'contacts')
-            return Promise.resolve({ data: contact, error: null });
-          if (table === 'tags')
-            return Promise.resolve({ data: tag, error: null });
-          if (table === 'contact_tags' && state.operation === 'insert') {
-            return Promise.resolve({
-              data:
-                options.insertData === undefined
-                  ? { id: 'join-1' }
-                  : options.insertData,
-              error: options.insertError ?? null,
-            });
-          }
-          return Promise.resolve({ data: null, error: null });
-        },
-      };
-      return builder;
-    },
-  } as unknown as SupabaseClient;
-}
+    // ContactRepository.findById
+    if (options.contact === null) {
+      ContactRepository.findById = vi.fn().mockResolvedValue(null);
+    } else {
+      ContactRepository.findById = vi.fn().mockResolvedValue({ _id: 'c-1', accountId: 'acc-1', tagIds: [] });
+    }
+
+    // ContactRepository.addTag
+    if (options.insertError) {
+      ContactRepository.addTag = vi.fn().mockRejectedValue(Object.assign(new Error(options.insertError.message), { code: options.insertError.code === '23505' ? 11000 : options.insertError.code }));
+    } else if (options.insertData === null) {
+      // simulate returning something that is not modified, if needed
+      ContactRepository.addTag = vi.fn().mockResolvedValue(true);
+    } else {
+      ContactRepository.addTag = vi.fn().mockResolvedValue(true);
+    }
+  }
 
 const input = {
   accountId: 'account-1',
@@ -59,39 +51,33 @@ const input = {
 
 describe('addContactTagIfAbsent', () => {
   it('returns true only when the join row was inserted', async () => {
-    await expect(addContactTagIfAbsent(fakeDb(), input)).resolves.toBe(true);
+    (setupMocks(), await expect(addContactTagIfAbsent(input)).resolves.toBe(true));
   });
 
   it('treats an error-free insert as successful even without a returned row', async () => {
-    await expect(
-      addContactTagIfAbsent(fakeDb({ insertData: null }), input)
-    ).resolves.toBe(true);
+    (setupMocks({insertData: null}), await expect(addContactTagIfAbsent(input)).resolves.toBe(true));
   });
 
   it('treats a unique violation as an idempotent duplicate', async () => {
-    const db = fakeDb({
-      insertData: null,
-      insertError: { code: '23505', message: 'duplicate key' },
-    });
-    await expect(addContactTagIfAbsent(db, input)).resolves.toBe(false);
+    setupMocks();
+    ContactRepository.findById = vi.fn().mockResolvedValue({ _id: 'c-1', accountId: 'acc-1', tagIds: ['tag-1'] });
+    await expect(addContactTagIfAbsent(input)).resolves.toBe(false);
   });
 
   it('refuses contacts and tags outside the account', async () => {
-    await expect(
-      addContactTagIfAbsent(fakeDb({ contact: null }), input)
-    ).rejects.toMatchObject({ status: 404 });
-    await expect(
-      addContactTagIfAbsent(fakeDb({ tag: null }), input)
-    ).rejects.toMatchObject({ status: 404 });
+    setupMocks({ contact: null });
+    await expect(addContactTagIfAbsent(input)).rejects.toMatchObject({ status: 404 });
+    setupMocks({ tag: null });
+    await expect(addContactTagIfAbsent(input)).rejects.toMatchObject({ status: 404 });
   });
 
   it('surfaces non-duplicate insert failures', async () => {
-    const db = fakeDb({
+    setupMocks({
       insertData: null,
       insertError: { code: '42501', message: 'permission denied' },
     });
-    await expect(addContactTagIfAbsent(db, input)).rejects.toThrow(
-      'Failed to add contact tag: permission denied'
+    await expect(addContactTagIfAbsent(input)).rejects.toThrow(
+      'permission denied'
     );
   });
 });

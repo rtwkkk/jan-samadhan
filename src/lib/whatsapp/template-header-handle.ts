@@ -1,6 +1,6 @@
 import { uploadResumableMedia } from '@/lib/whatsapp/meta-api'
 import type { TemplatePayload } from '@/lib/whatsapp/template-validators'
-import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
+import { isDeliverableUrl } from './ssrf'
 
 /**
  * Meta requires an `example.header_handle` (from the Resumable Upload

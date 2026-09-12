@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, resolveDisplayCurrency } from "@/lib/currency";
 import { useTranslations } from "next-intl";
 
 interface PipelineAnalyticsProps {
@@ -61,6 +61,7 @@ export function PipelineAnalytics({ stages, deals }: PipelineAnalyticsProps) {
     const totalCount = active.length;
     const totalValue = active.reduce((sum, d) => sum + Number(d.value || 0), 0);
     const avgValue = totalCount > 0 ? totalValue / totalCount : 0;
+    const displayCurrency = resolveDisplayCurrency(active, defaultCurrency);
 
     const stageById = new Map(sortedStages.map((s) => [s.id, s]));
     const weightedValue = openDeals.reduce((sum, d) => {
@@ -84,6 +85,7 @@ export function PipelineAnalytics({ stages, deals }: PipelineAnalyticsProps) {
     ).length;
 
     return {
+      displayCurrency,
       totalCount,
       totalValue,
       avgValue,
@@ -106,21 +108,21 @@ export function PipelineAnalytics({ stages, deals }: PipelineAnalyticsProps) {
         <Metric
           icon={<DollarSign className="h-4 w-4 text-primary" />}
           label={t("pipelineValue")}
-          value={formatCurrency(stats.totalValue, defaultCurrency)}
+          value={formatCurrency(stats.totalValue, stats.displayCurrency)}
           tooltip={t("pipelineValueTooltip")}
           t={t}
         />
         <Metric
           icon={<Target className="h-4 w-4 text-blue-400" />}
           label={t("avgDealSize")}
-          value={formatCurrency(stats.avgValue, defaultCurrency)}
+          value={formatCurrency(stats.avgValue, stats.displayCurrency)}
           tooltip={t("avgDealSizeTooltip")}
           t={t}
         />
         <Metric
           icon={<TrendingUp className="h-4 w-4 text-purple-400" />}
           label={t("weightedValue")}
-          value={formatCurrency(stats.weightedValue, defaultCurrency)}
+          value={formatCurrency(stats.weightedValue, stats.displayCurrency)}
           tooltip={t("weightedValueTooltip")}
           t={t}
         />

@@ -33,7 +33,6 @@ export async function POST(
     }
 
     const result = await addContactTagAndDispatch({
-      db: ctx.supabase,
       accountId: ctx.accountId,
       contactId,
       tagId,
@@ -60,7 +59,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'tag_id required' }, { status: 400 });
     }
 
-    await removeContactTag(ctx.supabase, {
+    await removeContactTag({
       accountId: ctx.accountId,
       contactId,
       tagId,
@@ -71,6 +70,46 @@ export async function DELETE(
     if (error instanceof ContactTagWriteError) {
       return tagWriteErrorResponse(error);
     }
+    return toErrorResponse(error);
+  }
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const ctx = await requireRole('viewer');
+    const { id: contactId } = await params;
+
+    const { ContactRepository } = await import('@/lib/mongodb/repositories/ContactRepository');
+    const { TagRepository } = await import('@/lib/mongodb/repositories/TagRepository');
+    
+    const contact = await ContactRepository.findById(ctx.accountId, contactId);
+    if (!contact) {
+      return NextResponse.json({ data: [] });
+    }
+
+    const tags = await TagRepository.findMany(ctx.accountId);
+    
+    const mapped = (contact.tagIds || []).map(tagId => {
+      const tag = tags.find(t => t._id === tagId);
+      if (!tag) return null;
+      return {
+        id: `ct_${contactId}_${tagId}`,
+        tag_id: tagId,
+        tags: {
+          id: tag._id,
+          account_id: tag.accountId,
+          name: tag.name,
+          color: tag.color,
+          created_at: tag.createdAt ? new Date(tag.createdAt as any).toISOString() : null
+        }
+      };
+    }).filter(Boolean);
+
+    return NextResponse.json({ data: mapped });
+  } catch (error) {
     return toErrorResponse(error);
   }
 }

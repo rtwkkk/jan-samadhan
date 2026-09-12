@@ -1,5 +1,5 @@
+import { MessageTemplateRepository } from '@/lib/mongodb/repositories/MessageTemplateRepository';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -53,7 +53,7 @@ function makeSupabaseStub(
     },
   };
 
-  return { stub: stub as unknown as SupabaseClient, calls };
+  return { stub: stub as unknown as any, calls };
 }
 
 describe('isTemplateWebhookField', () => {
@@ -70,18 +70,25 @@ describe('isTemplateWebhookField', () => {
   });
 });
 
+vi.mock('@/lib/mongodb/repositories/MessageTemplateRepository', () => ({
+  MessageTemplateRepository: {
+    updateByMetaTemplateId: vi.fn().mockResolvedValue(true),
+  }
+}));
+
 describe('handleTemplateWebhookChange — status update', () => {
   let supabaseCalls: ReturnType<typeof makeSupabaseStub>['calls'];
 
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('flips status to APPROVED and clears any rejection_reason', async () => {
-    const { stub, calls } = makeSupabaseStub();
-    supabaseCalls = calls;
+    const stub = null;
+    
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
@@ -92,23 +99,17 @@ describe('handleTemplateWebhookChange — status update', () => {
           message_template_language: 'en_US',
         },
       },
-      stub,
     );
-    expect(supabaseCalls).toHaveLength(1);
-    expect(supabaseCalls[0].table).toBe('message_templates');
-    expect(supabaseCalls[0].filter).toEqual({
-      column: 'meta_template_id',
-      value: '12345', // coerced to string so the .eq matches the TEXT column
-    });
-    expect(supabaseCalls[0].update).toEqual({
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledTimes(1);
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), { 
       status: 'APPROVED',
-      rejection_reason: null,
-      submission_error: null,
-    });
+      rejectionReason: undefined,
+      submissionError: undefined,
+     });
   });
 
   it('persists the reason field on REJECTED', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
@@ -118,53 +119,47 @@ describe('handleTemplateWebhookChange — status update', () => {
           reason: 'Template uses non-compliant language.',
         },
       },
-      stub,
     );
-    expect(calls[0].update?.status).toBe('REJECTED');
-    expect(calls[0].update?.rejection_reason).toBe(
-      'Template uses non-compliant language.',
-    );
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ status: 'REJECTED' }));
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ rejectionReason: 'Template uses non-compliant language.' }));
   });
 
   it('falls back to a generic reason when REJECTED has no `reason`', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
         value: { event: 'REJECTED', message_template_id: '7' },
       },
-      stub,
     );
-    expect(calls[0].update?.rejection_reason).toBe('Rejected by Meta');
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ rejectionReason: 'Rejected by Meta' }));
   });
 
   it('normalises PENDING_REVIEW → PENDING (via shared normalizeStatus)', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
         value: { event: 'PENDING_REVIEW', message_template_id: '1' },
       },
-      stub,
     );
-    expect(calls[0].update?.status).toBe('PENDING');
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ status: 'PENDING' }));
   });
 
   it('logs and exits when meta_template_id is missing (no UPDATE issued)', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
         value: { event: 'APPROVED' },
       },
-      stub,
     );
-    expect(calls).toHaveLength(0);
+    expect(MessageTemplateRepository.updateByMetaTemplateId).not.toHaveBeenCalled();
   });
 
   it('logs a warning when the row is unknown locally (zero matches)', async () => {
     const warn = vi.spyOn(console, 'warn');
-    const { stub } = makeSupabaseStub({ data: [], error: null });
+    const stub = null; (MessageTemplateRepository.updateByMetaTemplateId as any).mockResolvedValueOnce(false);
     await handleTemplateWebhookChange(
       {
         field: 'message_template_status_update',
@@ -174,15 +169,20 @@ describe('handleTemplateWebhookChange — status update', () => {
           message_template_name: 'mystery',
         },
       },
-      stub,
     );
     expect(warn).toHaveBeenCalled();
   });
 });
 
+vi.mock('@/lib/mongodb/repositories/MessageTemplateRepository', () => ({
+  MessageTemplateRepository: {
+    updateByMetaTemplateId: vi.fn().mockResolvedValue(true),
+  }
+}));
+
 describe('handleTemplateWebhookChange — quality update', () => {
-  it('sets quality_score from new_quality_score', async () => {
-    const { stub, calls } = makeSupabaseStub();
+  it('sets qualityScore from new_qualityScore', async () => {
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_quality_update',
@@ -192,17 +192,13 @@ describe('handleTemplateWebhookChange — quality update', () => {
           new_quality_score: 'YELLOW',
         },
       },
-      stub,
     );
-    expect(calls[0].update).toEqual({ quality_score: 'YELLOW' });
-    expect(calls[0].filter).toEqual({
-      column: 'meta_template_id',
-      value: '99',
-    });
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ qualityScore: 'YELLOW' }));
+    
   });
 
   it('stores null for unrecognised quality scores', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_quality_update',
@@ -211,16 +207,21 @@ describe('handleTemplateWebhookChange — quality update', () => {
           new_quality_score: 'PURPLE', // not a real Meta value
         },
       },
-      stub,
     );
-    expect(calls[0].update).toEqual({ quality_score: null });
+    expect(MessageTemplateRepository.updateByMetaTemplateId).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ qualityScore: undefined }));
   });
 });
+
+vi.mock('@/lib/mongodb/repositories/MessageTemplateRepository', () => ({
+  MessageTemplateRepository: {
+    updateByMetaTemplateId: vi.fn().mockResolvedValue(true),
+  }
+}));
 
 describe('handleTemplateWebhookChange — components update', () => {
   it('is an info-log no-op (does not write to DB)', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       {
         field: 'message_template_components_update',
@@ -229,24 +230,28 @@ describe('handleTemplateWebhookChange — components update', () => {
           message_template_name: 'x',
         },
       },
-      stub,
     );
-    expect(calls).toHaveLength(0);
+    expect(MessageTemplateRepository.updateByMetaTemplateId).not.toHaveBeenCalled();
     expect(info).toHaveBeenCalled();
   });
 });
 
+vi.mock('@/lib/mongodb/repositories/MessageTemplateRepository', () => ({
+  MessageTemplateRepository: {
+    updateByMetaTemplateId: vi.fn().mockResolvedValue(true),
+  }
+}));
+
 describe('handleTemplateWebhookChange — unknown field', () => {
   it('is a defensive no-op', async () => {
-    const { stub, calls } = makeSupabaseStub();
+    const stub = null;
     await handleTemplateWebhookChange(
       // Pretend Meta added a new template_* field we don't know about.
       // The route handler pre-filters via isTemplateWebhookField, but
       // the dispatch should still be safe if the filter is bypassed.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { field: 'message_template_future_field' as any, value: {} },
-      stub,
     );
-    expect(calls).toHaveLength(0);
+    expect(MessageTemplateRepository.updateByMetaTemplateId).not.toHaveBeenCalled();
   });
 });

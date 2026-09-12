@@ -6,9 +6,7 @@
 //   - promotes the target member to 'owner'
 //   - updates accounts.owner_user_id
 //
-// The atomic part lives in the `transfer_account_ownership`
-// SECURITY DEFINER RPC (migration 018). This route just validates
-// shape and forwards.
+// The atomic part lives in the `OwnershipService`.
 //
 // Why a separate endpoint instead of PATCH /members/[userId]?
 //   The semantics differ: transfer demotes the current owner as
@@ -19,7 +17,6 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import type { PostgrestError } from "@supabase/supabase-js";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import {
@@ -27,42 +24,39 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { OwnershipService } from "@/lib/auth/ownership-service";
 
-function rpcErrorToResponse(err: PostgrestError): NextResponse {
-  if (err.code === "42501") {
-    return NextResponse.json({ error: err.message }, { status: 403 });
+function serviceErrorToResponse(err: any): NextResponse {
+  const message = err.message || '';
+  if (message.startsWith("42501:")) {
+    return NextResponse.json({ error: message.split(':')[1] }, { status: 403 });
   }
-  if (err.code === "22023") {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  if (message.startsWith("22023:")) {
+    return NextResponse.json({ error: message.split(':')[1] }, { status: 400 });
   }
-  console.error("[transfer-ownership] unexpected RPC error:", err);
+  console.error("[transfer-ownership] unexpected error:", err);
   return NextResponse.json(
     { error: "Failed to transfer ownership" },
     { status: 500 },
   );
 }
 
-// Crude shape check — full UUID validation happens DB-side when
-// the FK / lookup runs. This guards against obviously-wrong input
-// (numbers, objects) before we round-trip.
-function looksLikeUuid(v: unknown): v is string {
-  return (
-    typeof v === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
-  );
+function looksLikeUuidOrObjectId(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  
+  // Accept standard UUID (since original IDs are UUIDs)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return true;
+  
+  // Accept MongoDB ObjectId format just in case
+  if (/^[0-9a-fA-F]{24}$/.test(v)) return true;
+  
+  return false;
 }
 
 export async function POST(request: Request) {
   try {
-    // `requireRole('owner')` is belt-and-braces — the RPC checks
-    // this too, but failing fast here saves a Supabase round trip
-    // on the obvious "admin trying to transfer" case.
     const ctx = await requireRole("owner");
 
-    // Rate-limit owner-only transfers. Legitimate use is one click
-    // every few months at most; a script run in a loop would
-    // produce a noisy audit trail. 30/min is well above any human
-    // pace and bounds the noise.
     const limit = checkRateLimit(
       `admin:transferOwnership:${ctx.userId}`,
       RATE_LIMITS.adminAction,
@@ -74,18 +68,18 @@ export async function POST(request: Request) {
       | null;
     const newOwnerUserId = body?.newOwnerUserId;
 
-    if (!looksLikeUuid(newOwnerUserId)) {
+    if (!looksLikeUuidOrObjectId(newOwnerUserId)) {
       return NextResponse.json(
-        { error: "'newOwnerUserId' must be a valid UUID" },
+        { error: "'newOwnerUserId' must be a valid ID" },
         { status: 400 },
       );
     }
 
-    const { error } = await ctx.supabase.rpc("transfer_account_ownership", {
-      p_new_owner_user_id: newOwnerUserId,
-    });
-
-    if (error) return rpcErrorToResponse(error);
+    try {
+      await OwnershipService.transferOwnership(ctx.userId, newOwnerUserId);
+    } catch (error) {
+      return serviceErrorToResponse(error);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

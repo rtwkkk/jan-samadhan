@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@/types";
 import { Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
@@ -28,67 +27,26 @@ export default function NotificationsPage() {
 
   const load = useCallback(async () => {
     if (!accountId) return;
-    const supabase = createClient();
-    const { data, error: fetchErr } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (fetchErr) {
-      setError(fetchErr.message);
-      return;
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) throw new Error("Failed to load notifications");
+      const data = await res.json();
+      setNotifications(data);
+    } catch (err: any) {
+      setError(err.message);
     }
-    setNotifications((data ?? []) as Notification[]);
   }, [accountId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    // Fallback polling for realtime notifications page
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
   }, [load]);
-
-  // Realtime — new assignments appear without a refresh, and a
-  // "mark all read" fired from another tab/device stays in sync here.
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel("notifications-page")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const row = payload.new as Notification;
-            setNotifications((prev) => {
-              if (!prev) return [row];
-              if (prev.some((n) => n.id === row.id)) return prev;
-              return [row, ...prev];
-            });
-          } else if (payload.eventType === "UPDATE") {
-            const row = payload.new as Notification;
-            setNotifications((prev) =>
-              prev?.map((n) => (n.id === row.id ? { ...n, ...row } : n)) ??
-              prev,
-            );
-          } else if (payload.eventType === "DELETE") {
-            const oldRow = payload.old as Partial<Notification>;
-            setNotifications(
-              (prev) => prev?.filter((n) => n.id !== oldRow.id) ?? prev,
-            );
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   const markRead = useCallback(
     async (id: string) => {
-      // Optimistic — the row is already visually "read" by the time the
-      // request lands, so the UI doesn't wait on the round-trip.
+      // Optimistic
       setNotifications(
         (prev) =>
           prev?.map((n) =>
@@ -97,13 +55,9 @@ export default function NotificationsPage() {
               : n,
           ) ?? prev,
       );
-      const supabase = createClient();
-      const { error: updateErr } = await supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", id)
-        .is("read_at", null);
-      if (updateErr) {
+      
+      const res = await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
+      if (!res.ok) {
         toast.error("Failed to mark notification as read");
         load();
       }
@@ -130,13 +84,11 @@ export default function NotificationsPage() {
     setNotifications(
       (prev) => prev?.map((n) => (n.read_at ? n : { ...n, read_at: now })) ?? prev,
     );
-    const supabase = createClient();
-    const { error: updateErr } = await supabase
-      .from("notifications")
-      .update({ read_at: now })
-      .is("read_at", null);
+    
+    const res = await fetch('/api/notifications/all', { method: 'PATCH' });
+    
     setMarkingAll(false);
-    if (updateErr) {
+    if (!res.ok) {
       toast.error("Failed to mark all as read");
       load();
     }

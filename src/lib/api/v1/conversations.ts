@@ -44,6 +44,7 @@ export interface ApiMessage {
   reply_to_message_id: string | null;
   interactive_reply_id: string | null;
   created_at: string;
+  reactions?: any[];
 }
 
 /**
@@ -96,5 +97,6 @@ export function serializeMessage(m: Message): ApiMessage {
     reply_to_message_id: m.reply_to_message_id ?? null,
     interactive_reply_id: m.interactive_reply_id ?? null,
     created_at: m.created_at,
+    reactions: (m as any).reactions,
   };
 }
