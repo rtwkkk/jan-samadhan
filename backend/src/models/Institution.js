@@ -39,6 +39,18 @@ const institutionSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  researchInnovation: {
+    activeResearch: { type: Number, default: 0 },
+    prototypes: { type: Number, default: 0 },
+    patents: { type: Number, default: 0 },
+    publications: { type: Number, default: 0 }
+  },
+  impactMetrics: {
+    peopleBenefited: { type: String, default: '0' },
+    villagesCovered: { type: Number, default: 0 },
+    districtsImpacted: { type: Number, default: 0 },
+    solutionsDeployed: { type: Number, default: 0 }
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password'],

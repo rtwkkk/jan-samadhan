@@ -26,6 +26,8 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/jagriti', require('./routes/jagritiRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
+app.use('/api/university', require('./routes/universityRoutes'));
+app.use('/api/industry', require('./routes/industryRoutes'));
 
 // Static folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
