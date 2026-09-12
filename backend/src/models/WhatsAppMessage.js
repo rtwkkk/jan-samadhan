@@ -27,9 +27,7 @@ const whatsAppMessageSchema = new mongoose.Schema({
     type: String
   },
   waMessageId: {
-    type: String,
-    index: true,
-    sparse: true
+    type: String
   },
   status: {
     type: String,

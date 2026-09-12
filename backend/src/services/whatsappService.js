@@ -52,9 +52,49 @@ async function sendTextMessage(to, text) {
     console.log(`[WhatsApp] Text message sent to ${to}, messageId: ${messageId}`);
     return { messageId };
   } catch (error) {
-    const errMsg = error.response?.data?.error?.message || error.message;
-    console.error(`[WhatsApp] Failed to send text to ${to}:`, errMsg);
+    const errObj = error.response?.data?.error;
+    const errMsg = errObj?.message || error.message;
+    console.error(`[WhatsApp] Failed to send text to ${to}:`, errMsg, errObj || '');
     throw new Error(`WhatsApp send failed: ${errMsg}`);
+  }
+}
+
+/**
+ * Send an interactive location request message.
+ * @param {string} to - Recipient phone number
+ * @param {string} text - Message text asking for location
+ * @returns {Promise<{ messageId: string }>}
+ */
+async function sendLocationRequestMessage(to, text) {
+  const { accessToken, phoneNumberId } = getConfig();
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`;
+
+  try {
+    const response = await axios.post(url, {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'location_request_message',
+        body: { text: text },
+        action: { name: 'send_location' }
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const messageId = response.data?.messages?.[0]?.id || '';
+    console.log(`[WhatsApp] Location request sent to ${to}, messageId: ${messageId}`);
+    return { messageId };
+  } catch (error) {
+    const errObj = error.response?.data?.error;
+    const errMsg = errObj?.message || error.message;
+    console.error(`[WhatsApp] Failed to send location request to ${to}:`, errMsg, errObj || '');
+    throw new Error(`WhatsApp send location request failed: ${errMsg}`);
   }
 }
 
@@ -93,8 +133,9 @@ async function sendMediaMessage(to, mediaType, mediaUrl, caption, filename) {
     console.log(`[WhatsApp] ${mediaType} sent to ${to}, messageId: ${messageId}`);
     return { messageId };
   } catch (error) {
-    const errMsg = error.response?.data?.error?.message || error.message;
-    console.error(`[WhatsApp] Failed to send ${mediaType} to ${to}:`, errMsg);
+    const errObj = error.response?.data?.error;
+    const errMsg = errObj?.message || error.message;
+    console.error(`[WhatsApp] Failed to send ${mediaType} to ${to}:`, errMsg, errObj || '');
     throw new Error(`WhatsApp media send failed: ${errMsg}`);
   }
 }
@@ -223,12 +264,14 @@ async function markAsRead(messageId) {
     });
   } catch (error) {
     // Non-critical — don't throw, just log
-    console.warn('[WhatsApp] Failed to mark message as read:', error.message);
+    const errObj = error.response?.data?.error;
+    console.warn('[WhatsApp] Failed to mark message as read:', errObj?.message || error.message);
   }
 }
 
 module.exports = {
   sendTextMessage,
+  sendLocationRequestMessage,
   sendMediaMessage,
   sendInteractiveButtons,
   getMediaUrl,

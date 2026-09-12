@@ -61,7 +61,6 @@ const getReviewQueue = async (req, res) => {
       status: c.status === 'submitted' ? 'Info Received' : 'Pending Review',
       time: timeSince(c.createdAt),
       description: c.description,
-      callSummary: c.callSummary, // Explicitly pass callSummary down to frontend
       peopleAffected: c.peopleAffected
     }));
 

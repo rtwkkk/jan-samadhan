@@ -64,12 +64,15 @@ const handleWebhook = async (req, res) => {
     res.sendStatus(200);
 
     const body = req.body;
+    const baseUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
 
     // Validate it's a WhatsApp webhook
     if (body?.object !== 'whatsapp_business_account') {
-      console.warn('[WhatsApp Webhook] Non-WhatsApp event received');
+      console.warn('[WhatsApp Webhook] Non-WhatsApp event received:', body?.object);
       return;
     }
+
+    console.log('[WhatsApp Webhook] Received event:', JSON.stringify(body, null, 2));
 
     // Process each entry
     const entries = body.entry || [];
@@ -78,7 +81,7 @@ const handleWebhook = async (req, res) => {
     for (const entry of entries) {
       // Validate Business Account ID if configured
       if (expectedWabaId && entry.id !== expectedWabaId) {
-        console.warn(`[WhatsApp Webhook] Event ignored. WABA ID mismatch: received ${entry.id}, expected ${expectedWabaId}`);
+        console.warn(`[WhatsApp Webhook] Event ignored. WABA ID mismatch: received '${entry.id}', expected '${expectedWabaId}'`);
         continue;
       }
 
@@ -112,7 +115,8 @@ const handleWebhook = async (req, res) => {
               await conversationService.handleIncomingMessage(
                 senderPhone,
                 message.text?.body || '',
-                waMessageId
+                waMessageId,
+                baseUrl
               );
               break;
 

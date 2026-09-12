@@ -7,6 +7,15 @@ const connectDB = require('./config/db');
 // Load env vars
 dotenv.config();
 
+// Trim whitespace from critical WhatsApp env vars (prevents auth/matching issues)
+['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID', 'WHATSAPP_VERIFY_TOKEN', 'META_APP_SECRET', 'GROQ_API_KEY'].forEach(key => {
+  if (process.env[key]) process.env[key] = process.env[key].trim();
+});
+
+console.log('[Startup] WhatsApp Token loaded:', process.env.WHATSAPP_ACCESS_TOKEN ? `${process.env.WHATSAPP_ACCESS_TOKEN.substring(0, 10)}...${process.env.WHATSAPP_ACCESS_TOKEN.substring(process.env.WHATSAPP_ACCESS_TOKEN.length - 5)}` : 'MISSING');
+console.log('[Startup] Phone Number ID:', process.env.WHATSAPP_PHONE_NUMBER_ID || 'MISSING');
+console.log('[Startup] WABA ID:', process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || 'MISSING');
+
 // Connect to database
 connectDB().then(() => {
   // Seed institutions
@@ -33,6 +42,7 @@ app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/university', require('./routes/universityRoutes'));
 app.use('/api/industry', require('./routes/industryRoutes'));
 app.use('/api/whatsapp', require('./routes/whatsappRoutes'));
+app.use('/api/sarvam', require('./routes/sarvamRoutes'));
 
 // Static folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

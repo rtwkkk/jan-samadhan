@@ -190,8 +190,7 @@ async function processSession(voiceData) {
   try {
     challenge = await Challenge.create({
       title: aiResult.title,
-      description: draft.callSummary, // Keep finalDesc in description
-      callSummary: call_summary || draft.callSummary, // Map original call_summary distinctly if available
+      description: call_summary || draft.description, // Map original call_summary distinctly if available
       category: aiResult.category,
       department: aiResult.department,
       urgencySeverity: aiResult.priority,

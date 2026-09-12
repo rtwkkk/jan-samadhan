@@ -10,13 +10,6 @@ const challengeSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide a description']
   },
-  callSummary: {
-    type: String
-  },
-  category: {
-    type: String,
-    default: 'Other'
-  },
   department: {
     type: String,
     default: 'Other'
@@ -51,7 +44,7 @@ const challengeSchema = new mongoose.Schema({
   },
   supportingDocuments: {
     type: [String],
-    default: []
+    default: [] //  null value to be updated later 
   },
   fullName: {
     type: String,
@@ -162,7 +155,6 @@ const challengeSchema = new mongoose.Schema({
 
 // Add indexes for searching/filtering
 challengeSchema.index({ district: 1, status: 1 });
-challengeSchema.index({ category: 1 });
 challengeSchema.index({ urgencySeverity: 1 });
 
 module.exports = mongoose.model('Challenge', challengeSchema);

@@ -189,7 +189,7 @@ exports.getResearchInnovation = async (req, res) => {
       prototypes: inst.researchInnovation?.prototypes || 0,
       patents: inst.researchInnovation?.patents || 0,
       publications: inst.researchInnovation?.publications || 0,
-      highlights: [] // Mock highlights for now
+      highlights: inst.researchInnovation?.highlights || []
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -230,10 +230,24 @@ exports.getUniversityProfile = async (req, res) => {
 };
 
 exports.getMilestones = async (req, res) => {
-  // Returns mock milestones for now
-  res.json([
-    { id: 'MIL-001', project: 'Smart Water IoT System', title: 'Prototype Demo', dueDate: '2023-11-20', status: 'Pending' }
-  ]);
+  try {
+    const projects = await Project.find({ institutionId: req.user._id, status: 'Active' });
+    const milestones = [];
+    projects.forEach(p => {
+      if (p.nextMilestone) {
+        milestones.push({
+          id: p._id,
+          project: p.title,
+          title: p.nextMilestone,
+          dueDate: p.submittedOn ? new Date(p.submittedOn.getTime() + 30*24*60*60*1000).toISOString().split('T')[0] : 'TBD', // roughly +1 month from submittedOn
+          status: 'Pending'
+        });
+      }
+    });
+    res.json(milestones);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getNotifications = async (req, res) => {

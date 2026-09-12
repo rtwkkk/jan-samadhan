@@ -57,48 +57,70 @@ function resetSession(phone) {
   sessions.delete(phone);
 }
 
-// ── Groq AI Helper ──
+// ── Gemini AI Helper ──
 
 /**
- * Call Groq API for AI-powered responses.
+ * Call Gemini API for AI-powered responses.
  * @param {Array<{role: string, content: string}>} messages
+ * @param {boolean} [isJson=false]
  * @returns {Promise<string|null>}
  */
-async function callGroqAI(messages) {
-  const apiKey = process.env.GROQ_API_KEY;
+async function callGeminiAI(messages, isJson = false) {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('[WhatsApp AI] GROQ_API_KEY not configured, using deterministic responses');
+    console.warn('[WhatsApp AI] GEMINI_API_KEY not configured, using deterministic responses');
     return null;
   }
 
+  let systemInstruction;
+  const contents = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemInstruction = { parts: [{ text: msg.content }] };
+    } else {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+  }
+
+  const generationConfig = {
+    temperature: 0.3,
+    maxOutputTokens: 1024,
+  };
+
+  if (isJson) {
+    generationConfig.responseMimeType = "application/json";
+  }
+
   try {
-    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'llama-3.3-70b-versatile',
-      messages,
-      temperature: 0.3,
-      max_tokens: 1024
+    const response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      system_instruction: systemInstruction,
+      contents,
+      generationConfig
     }, {
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
       },
       timeout: 15000
     });
 
-    return response.data?.choices?.[0]?.message?.content?.trim() || null;
+    return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
   } catch (error) {
-    console.error('[WhatsApp AI] Groq API error:', error.response?.data?.error?.message || error.message);
+    console.error('[WhatsApp AI] Gemini API error:', error.response?.data?.error?.message || error.message);
     return null;
   }
 }
 
 /**
- * Call Groq API and parse JSON response.
+ * Call Gemini API and parse JSON response.
  * @param {Array<{role: string, content: string}>} messages
  * @returns {Promise<Object|null>}
  */
-async function callGroqJSON(messages) {
-  const raw = await callGroqAI(messages);
+async function callGeminiJSON(messages) {
+  const raw = await callGeminiAI(messages, true);
   if (!raw) return null;
 
   try {
@@ -138,16 +160,17 @@ Classify the user's latest message into EXACTLY ONE of these categories. Return 
 
 Categories:
 GREETING (e.g., hi, hello, namaste, start, hey)
-REGISTER_COMPLAINT (e.g., paani nahi aa raha, road toot gayi hai, bijli kharab hai, report a problem, 1)
+REGISTER_COMPLAINT (e.g., paani, bijli, sadak, education, health, pension, garbage, safety, report a problem, 1)
 CHECK_STATUS (e.g., meri complaint ka kya hua, status batao, track complaint, 2)
 OTHER_HELP (e.g., mujhe madad chahiye, other, 3)
+OUT_OF_SCOPE (e.g., jokes, songs, personal chat, unrelated topics)
 UNKNOWN (unrelated, ambiguous)
 
 User's latest message: "${userMessage}"`
   };
 
   const recentHistory = history.slice(-5);
-  const response = await callGroqAI([...recentHistory, systemPrompt]);
+  const response = await callGeminiAI([...recentHistory, systemPrompt]);
 
   if (!response) return 'UNKNOWN';
   const clean = response.toUpperCase();
@@ -156,6 +179,7 @@ User's latest message: "${userMessage}"`
   if (clean.includes('CHECK_STATUS')) return 'CHECK_STATUS';
   if (clean.includes('OTHER_HELP')) return 'OTHER_HELP';
   if (clean.includes('GREETING')) return 'GREETING';
+  if (clean.includes('OUT_OF_SCOPE')) return 'OUT_OF_SCOPE';
   return 'UNKNOWN';
 }
 
@@ -173,18 +197,20 @@ async function handleComplaintRegistration(phone, history) {
 Your job is to read the conversation, extract the complaint details, and formulate the NEXT natural response to the citizen.
 
 Rules for conversation (nextMessageToCitizen):
-1. CITIZEN-FRIENDLY LANGUAGE: Use simple everyday Hindi/Hinglish (e.g., "Achha, samajh gaya", "Aapko kis cheez ki problem hai?", "Ye problem kis district mein hai?").
+1. CITIZEN-FRIENDLY & PROFESSIONAL LANGUAGE: Use simple, polite, everyday Hindi/Hinglish. Sound professional, warm, and natural. Do NOT append 'ji' after the citizen's name or in responses (e.g. avoid 'Sorry ji', 'Achha ji', 'Name ji').
 2. ONE QUESTION AT A TIME: Never dump multiple questions. Determine ONE missing required field and ask for it.
-3. VAGUE INPUT & MULTIPLE ISSUES: If input is vague ("road kharab hai"), ask ONE clarifying question. If they mention multiple issues, ask which one to register first.
-4. CONFIRMATION: When ALL required fields (citizenName, complaintType, description, district, villageCityBlock) AND evidence availability are known, write a short conversational summary and ask for explicit confirmation.
+3. VAGUE INPUT & MULTIPLE ISSUES: If input is vague ("bohot problem hai"), ask ONE clarifying question. If they mention multiple issues, ask which one to register first. Accept ANY societal, public, or civic issue (e.g. water, electricity, roads, education, healthcare, social welfare, environment, crime, corruption).
+4. CONFIRMATION: When ALL required fields (citizenName, complaintType, description, district, villageCityBlock, peopleAffected, locationLat, locationLng) AND evidence availability are known, write a short conversational summary and ask for explicit confirmation.
 
 Rules for extraction:
-- Infer 'department' (e.g., Water Supply, Electricity, Roads/Public Works, Municipal/Sanitation) based on their own words.
+- Retain ALL previously extracted information in the JSON output. Do NOT drop fields (like citizenName) that were provided earlier in the conversation.
+- Infer 'department' (e.g., Water Supply, Electricity, Public Works, Sanitation, Health, Education, Police, Social Welfare) based on their own words.
 - Infer 'priority' (Low, Medium, High, Critical) from duration/severity.
+- If the user shares a location (e.g. 📍 Location: ...), extract the latitude and longitude into 'locationLat' and 'locationLng'.
 - If they explicitly confirm the summary (e.g., "haan", "yes", "sahi hai", "kar do", "ji haan"), set "isConfirmed": true.
 - If they cancel or correct during confirmation (e.g., "nahi", "galat hai", "change karna hai"), set "isConfirmed": false.
 
-Output valid JSON ONLY. Only include fields that were provided or confidently inferred.
+Output valid JSON ONLY. Do NOT wrap it in markdown. Do NOT add any extra text.
 
 JSON Schema:
 {
@@ -193,6 +219,8 @@ JSON Schema:
   "description": "string",
   "district": "string",
   "villageCityBlock": "string",
+  "locationLat": 28.123,
+  "locationLng": 77.123,
   "location": "string",
   "peopleAffected": 50,
   "evidenceAvailable": false,
@@ -204,10 +232,10 @@ JSON Schema:
 }`
   };
 
-  const draft = await callGroqJSON([...history, extractionPrompt]);
+  const draft = await callGeminiJSON([...history, extractionPrompt]);
 
   if (!draft) {
-    return "Sorry ji, abhi thodi technical problem aa rahi hai. Ek baar phir se bataiye.";
+    return "Sorry, abhi thodi technical problem aa rahi hai. Ek baar phir se bataiye.";
   }
 
   draft.phone = phone;
@@ -224,6 +252,8 @@ JSON Schema:
   if (!draft.description?.trim()) missingFields.push('description');
   if (!draft.district?.trim()) missingFields.push('district');
   if (!draft.villageCityBlock?.trim()) missingFields.push('villageCityBlock');
+  if (typeof draft.peopleAffected !== 'number' || draft.peopleAffected < 1) missingFields.push('peopleAffected');
+  if (typeof draft.locationLat !== 'number' || typeof draft.locationLng !== 'number') missingFields.push('location');
 
   // AI can never confirm if required fields are missing
   if (draft.isConfirmed && missingFields.length > 0) {
@@ -238,18 +268,23 @@ JSON Schema:
         'complaintType': "Aapko kis cheez ki problem hai? Jaise paani, bijli, sadak, safai etc.",
         'description': "Theek hai 👍 Problem kya hai, thoda bataiye.",
         'district': "Ye problem kis district mein hai?",
-        'villageCityBlock': "Aapke gaon, city ya block ka naam kya hai?"
+        'villageCityBlock': "Aapke gaon, city ya block ka naam kya hai?",
+        'peopleAffected': "Is problem se lagbhag kitne log pareshan hain?",
+        'location': "Kripya apni exact location WhatsApp par share karein (Location attachment bhej kar)."
       };
+      if (missingFields[0] === 'location') {
+        return { isLocationRequest: true, text: "Kripya niche diye gaye 'Send Location' button par click karke apni exact location (GPS) share karein." };
+      }
       return draft.nextMessageToCitizen || fieldQuestions[missingFields[0]];
     }
 
     // All required fields present but not confirmed — ask for evidence or confirmation
     if (draft.evidenceAvailable === undefined) {
-      return draft.nextMessageToCitizen || "Aapke paas iski koi photo ya video hai? (Haan/Nahi)";
+      return draft.nextMessageToCitizen || "Aapke paas iski koi photo ya video hai? Agar photo nahi bhejenge toh complaint low priority mein daali ja sakti hai. (Haan/Nahi)";
     }
 
     // Deterministic Summary Fallback
-    let summary = "Achha ji, complaint register karne se pehle ek baar details check kar lete hain:\n\n";
+    let summary = "Complaint register karne se pehle ek baar details check kar lete hain:\n\n";
     summary += `Name: ${draft.citizenName}\n`;
     summary += `Type: ${draft.complaintType}\n`;
     summary += `Description: ${draft.description}\n`;
@@ -275,11 +310,12 @@ JSON Schema:
     const challenge = await Challenge.create({
       title: `${draft.complaintType} - ${draft.district}`.substring(0, 120),
       description: draft.description,
-      category: draft.complaintType,
       department: draft.department || 'Other',
       urgencySeverity: urgency,
       district: draft.district,
       villageCityBlock: draft.villageCityBlock,
+      latitude: draft.locationLat,
+      longitude: draft.locationLng,
       peopleAffected: typeof draft.peopleAffected === 'number' && draft.peopleAffected >= 1 ? draft.peopleAffected : 1,
       fullName: draft.citizenName,
       mobileNumber: normalizedPhone,
@@ -306,20 +342,20 @@ JSON Schema:
 /**
  * Handle complaint status check.
  */
-async function handleStatusCheck(userMessage) {
+async function handleStatusCheck(userMessage, baseUrl) {
   // Try to extract a MongoDB ObjectId or any ID-like pattern
   const objectIdMatch = userMessage.match(/[0-9a-fA-F]{24}/);
   const idMatch = objectIdMatch ? objectIdMatch[0] : null;
 
   if (!idMatch) {
-    return "Ji, kripya apna Complaint ID bhejiye. Aapki complaint register hone par jo ID mili thi woh bhejein.";
+    return "Kripya apna Complaint ID bhejiye. Aapki complaint register hone par jo ID mili thi woh bhejein.";
   }
 
   try {
     const challenge = await Challenge.findById(idMatch);
 
     if (!challenge) {
-      return "Ji, is Complaint ID se koi complaint nahi mili. Kripya Complaint ID check karke dobara bhejiye.";
+      return "Is Complaint ID se koi complaint nahi mili. Kripya Complaint ID check karke dobara bhejiye.";
     }
 
     const statusMap = {
@@ -337,8 +373,15 @@ async function handleStatusCheck(userMessage) {
     let response = `*Complaint Details:*\n\n`;
     response += `*ID:* ${challenge._id}\n`;
     response += `*Title:* ${challenge.title}\n`;
-    response += `*Status:* ${readableStatus}\n`;
-    response += `*Category:* ${challenge.category}\n`;
+    response += `*Status:* ${readableStatus}\n\n`;
+
+    let progressUrl = null;
+    const validStatuses = ['submitted', 'under_review', 'information_requested', 'verified', 'assigned', 'in_progress', 'resolved'];
+    if (validStatuses.includes(challenge.status)) {
+      progressUrl = `${baseUrl}/uploads/progress-${challenge.status}.png`;
+    }
+
+    response += `*Department:* ${challenge.department || 'Other'}\n`;
     response += `*District:* ${challenge.district}\n`;
     response += `*Priority:* ${challenge.urgencySeverity}\n`;
 
@@ -347,7 +390,7 @@ async function handleStatusCheck(userMessage) {
     }
 
     response += `\nDoosri complaint ka status check karne ke liye ID bhejein, ya menu ke liye 'hi' type karein.`;
-    return response;
+    return progressUrl ? { text: response, mediaUrl: progressUrl } : response;
   } catch (err) {
     console.error('[WhatsApp] Status check error:', err);
     return "Maaf karna, status check karte waqt error aa gaya. Thodi der mein try karein.";
@@ -394,9 +437,10 @@ function handleOtherHelp(userMessage, isFirstEntry) {
  * @param {string} phone - Sender's phone number
  * @param {string} messageText - Incoming message text
  * @param {string} [waMessageId] - Meta's message ID (for deduplication)
+ * @param {string} [baseUrl] - Webhook server base URL for image generation
  * @returns {Promise<void>}
  */
-async function handleIncomingMessage(phone, messageText, waMessageId) {
+async function handleIncomingMessage(phone, messageText, waMessageId, baseUrl) {
   try {
     if (!messageText || !messageText.trim()) return;
 
@@ -440,6 +484,7 @@ async function handleIncomingMessage(phone, messageText, waMessageId) {
     const userLower = messageText.trim().toLowerCase();
 
     let replyText = '';
+    let mediaResult = null;
 
     // ── Route based on session state ──
     if (session.state === 'REGISTERING') {
@@ -448,7 +493,13 @@ async function handleIncomingMessage(phone, messageText, waMessageId) {
         resetSession(phone);
         replyText = "Complaint registration cancel ho gayi.\n\n" + MENU_TEXT;
       } else {
-        replyText = await handleComplaintRegistration(phone, history);
+        const regResult = await handleComplaintRegistration(phone, history);
+        if (typeof regResult === 'object') {
+          replyText = regResult.text;
+          mediaResult = regResult;
+        } else {
+          replyText = regResult;
+        }
         // If complaint was created, session was already reset
         if (!sessions.has(phone)) {
           // Complaint was created successfully
@@ -459,7 +510,13 @@ async function handleIncomingMessage(phone, messageText, waMessageId) {
         resetSession(phone);
         replyText = MENU_TEXT;
       } else {
-        replyText = await handleStatusCheck(messageText);
+        const statusResult = await handleStatusCheck(messageText, baseUrl);
+        if (typeof statusResult === 'string') {
+          replyText = statusResult;
+        } else {
+          replyText = statusResult.text;
+          mediaResult = statusResult;
+        }
         // Keep in status-checking state for consecutive lookups
       }
     } else if (session.state === 'OTHER_HELP') {
@@ -487,12 +544,16 @@ async function handleIncomingMessage(phone, messageText, waMessageId) {
 
         case 'CHECK_STATUS':
           session.state = 'CHECKING_STATUS';
-          replyText = "Ji, kripya apna Complaint ID bhejiye.";
+          replyText = "Kripya apna Complaint ID bhejiye.";
           break;
 
         case 'OTHER_HELP':
           session.state = 'OTHER_HELP';
           replyText = handleOtherHelp(messageText, true);
+          break;
+
+        case 'OUT_OF_SCOPE':
+          replyText = "Maaf kijiye, main sirf Jan Samadhan portal se judi shikayaton aur jaankari ke liye hoon. Main is baare mein madad nahi kar sakta.";
           break;
 
         default:
@@ -504,14 +565,25 @@ async function handleIncomingMessage(phone, messageText, waMessageId) {
     // ── Send reply ──
     if (replyText) {
       try {
-        const { messageId } = await whatsappService.sendTextMessage(phone, replyText);
+        let messageId;
+        if (mediaResult && mediaResult.mediaUrl) {
+          const res = await whatsappService.sendMediaMessage(phone, 'image', mediaResult.mediaUrl, replyText);
+          messageId = res.messageId;
+        } else if (mediaResult && mediaResult.isLocationRequest) {
+          const res = await whatsappService.sendLocationRequestMessage(phone, replyText);
+          messageId = res.messageId;
+        } else {
+          const res = await whatsappService.sendTextMessage(phone, replyText);
+          messageId = res.messageId;
+        }
 
         // Store outbound message
         await WhatsAppMessage.create({
           phone,
           direction: 'outbound',
           content: replyText,
-          messageType: 'text',
+          messageType: mediaResult ? 'image' : 'text',
+          mediaUrl: mediaResult ? mediaResult.mediaUrl : undefined,
           waMessageId: messageId || undefined,
           status: 'sent'
         });
@@ -608,10 +680,57 @@ async function handleIncomingMedia(phone, mediaInfo, waMessageId) {
   }
 }
 
+/**
+ * Handoff from a completed Sarvam Voice Call directly into the WhatsApp CRM.
+ * Injects the collected details into the CRM memory and sends a location request template.
+ * @param {string} phone 
+ * @param {Object} callDetails 
+ */
+async function initializeVoiceCallHandoff(phone, callDetails) {
+  try {
+    // Force reset session to start fresh in REGISTERING state
+    resetSession(phone);
+    const session = getSession(phone);
+    session.state = 'REGISTERING';
+    
+    // Inject memory from the voice call
+    session.draft = {
+      citizenName: callDetails.userName || '',
+      complaintType: 'Other', // General default, AI will refine later if needed
+      description: callDetails.callSummary || 'No description provided',
+      district: '',
+      villageCityBlock: '',
+      // We keep location empty so the CRM asks for it
+      peopleAffected: 1, // Assume 1 to skip asking for it unless AI decides otherwise
+    };
+
+    // Construct the professional template message
+    const messageText = `Namaskar ${callDetails.userName ? callDetails.userName + ' ' : ''}! 🙏\nThank you for speaking with Jagriti on the Jan Samadhan Support Line.\n\nWe have successfully recorded your concern:\n🔹 Name: ${callDetails.userName || 'Citizen'}\n🔹 Phone: ${phone}\n🔹 Problem Summary: ${callDetails.callSummary || 'Not specified'}\n\nTo proceed with resolving your issue, we require your exact live location and any supporting photos/videos of the problem.\n\nPlease tap the 'Send Location' button below to share your GPS coordinates.`;
+
+    // Send WhatsApp location request
+    const { messageId } = await whatsappService.sendLocationRequestMessage(phone, messageText);
+
+    // Log the outbound message to the database
+    await WhatsAppMessage.create({
+      phone,
+      direction: 'outbound',
+      content: messageText,
+      messageType: 'interactive',
+      waMessageId: messageId || undefined,
+      status: 'sent'
+    });
+
+    console.log(`[WhatsApp CRM] Successfully initialized voice call handoff for ${phone}`);
+  } catch (error) {
+    console.error(`[WhatsApp CRM] Failed to initialize voice call handoff for ${phone}:`, error.message);
+  }
+}
+
 module.exports = {
   handleIncomingMessage,
   handleIncomingMedia,
   getSession,
   resetSession,
+  initializeVoiceCallHandoff,
   MENU_TEXT
 };

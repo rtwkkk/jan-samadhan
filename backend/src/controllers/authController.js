@@ -65,7 +65,9 @@ const register = async (req, res) => {
           name,
           email,
           phone,
-          password
+          password,
+          location: req.body.location || '',
+          focusAreas: req.body.focusAreas || []
         });
       } else {
         user = await User.create({

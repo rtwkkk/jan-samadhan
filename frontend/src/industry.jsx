@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { industryService } from './services/industryService';
 
 // ── Detail Modal Component (reuses project's existing styling patterns) ──
@@ -102,13 +102,13 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [usr, ch, app, prj, col, imp, not] = await Promise.all([
-          industryService.getIndustryUser(),
-          industryService.getRecommendedChallenges(),
-          industryService.getMyApplications(),
-          industryService.getActiveProjects(),
-          industryService.getCollaborationRequests(),
-          industryService.getImpactMetrics(),
+        const [usr, ch, app, prj, col, stats, not] = await Promise.all([
+          industryService.getIndustryProfile(),
+          industryService.getOpenChallenges(),
+          industryService.getCSRRequests(),
+          industryService.getActiveCollaborations(),
+          industryService.getCSRRequests(),
+          industryService.getIndustryStats(),
           industryService.getNotifications()
         ]);
         setIndustryUser(usr);
@@ -116,7 +116,15 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
         setApplications(app);
         setProjects(prj);
         setCollaborations(col);
-        setImpact(imp);
+        
+        // Mock impact data since there's no explicit backend route for industry impact yet
+        setImpact({
+          peopleReached: '25,000+',
+          villagesCovered: '120',
+          solutionsDeployed: stats?.solutionsDeployed || '0',
+          districtsImpacted: '8',
+          recentImpact: []
+        });
         setNotifications(not);
       } catch (err) {
         console.error("Error loading industry data", err);
@@ -220,7 +228,7 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                           <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.id}</span>
                           <span>{c.title}</span>
                           <span><span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{c.domain}</span></span>
-                          <span>{c.district}</span>
+                          <span>{c.location || 'Unknown'}</span>
                           <span style={{ color: '#08743f', fontWeight: 600 }}>View Challenge →</span>
                         </div>
                       ))}
@@ -243,22 +251,21 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                             <span style={{ fontSize: '12px', fontWeight: 600, color: '#08743f', background: '#e6f4ea', padding: '4px 8px', borderRadius: '4px', marginBottom: '8px', display: 'inline-block' }}>{c.domain}</span>
                             <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{c.title}</h3>
                             <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#64748b' }}>
-                              <span>📍 District: {c.district}</span>
-                              <span style={{ color: c.severity === 'High' ? '#dc2626' : '#d97706' }}>⚡ Severity: {c.severity}</span>
-                              <span>👥 People Affected: {c.peopleAffected}</span>
+                              <span>📍 District: {c.location || 'Unknown'}</span>
+                              <span style={{ color: c.urgency === 'High' ? '#dc2626' : '#d97706' }}>⚡ Urgency: {c.urgency || 'Normal'}</span>
                             </div>
                           </div>
-                          <StatusBadge status={c.currentStage} />
+                          <StatusBadge status={c.type || 'Open'} />
                         </div>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '6px' }}>
                           <div>
-                            <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>University Collaboration</span>
-                            <span style={{ fontSize: '14px', color: '#0f172a' }}>{c.university}</span>
+                            <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Type</span>
+                            <span style={{ fontSize: '14px', color: '#0f172a' }}>{c.type}</span>
                           </div>
                           <div>
                             <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Support Required</span>
-                            <span style={{ fontSize: '14px', color: '#0f172a' }}>{c.supportRequired.join(' + ')}</span>
+                            <span style={{ fontSize: '14px', color: '#0f172a' }}>Financial / Technical</span>
                           </div>
                         </div>
 
@@ -284,10 +291,10 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                     </div>
                     {applications.map(app => (
                       <div key={app.id} className="ud-table-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr 1fr', padding: '16px', borderBottom: '1px solid #f1f5f9', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{app.challengeTitle}</span>
-                        <span>{app.district}</span>
-                        <span>{app.domain}</span>
-                        <span style={{ fontSize: '13px' }}>{app.supportOffered.join(', ')}</span>
+                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{app.title}</span>
+                        <span>{app.institution || 'N/A'}</span>
+                        <span>N/A</span>
+                        <span style={{ fontSize: '13px' }}>{app.requestedAmount || 'N/A'}</span>
                         <span><StatusBadge status={app.status} /></span>
                         <button onClick={() => setSelectedApplication(app)} style={{ background: 'none', border: 'none', color: '#08743f', fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: 0 }}>View Application</button>
                       </div>
@@ -310,9 +317,7 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                             <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>PROJECT: {p.id}</span>
                             <h3 style={{ margin: '4px 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{p.title}</h3>
                             <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#64748b' }}>
-                              <span>📍 District: {p.district}</span>
-                              <span>🏛 Government: {p.government}</span>
-                              <span>🏫 University: {p.university}</span>
+                              <span>🏛 Partner: {p.partner}</span>
                             </div>
                           </div>
                           <button onClick={() => setSelectedProject(p)} style={{ background: 'none', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>View Project</button>
@@ -356,15 +361,12 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <span style={{ fontSize: '12px', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', marginBottom: '4px', display: 'inline-block' }}>New Collaboration Request</span>
-                            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{c.projectTitle}</h3>
+                            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{c.title}</h3>
                             <div style={{ fontSize: '13px', color: '#475569', marginBottom: '16px' }}>
-                              From: <b>{c.from}</b> &nbsp;&nbsp;|&nbsp;&nbsp; Date: {c.date}
+                              From: <b>{c.institution || 'Institution'}</b>
                             </div>
                             <div>
-                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Looking for:</span>
-                              <ul style={{ margin: '8px 0 0 20px', padding: 0, fontSize: '14px', color: '#0f172a' }}>
-                                {c.lookingFor.map(item => <li key={item}>{item}</li>)}
-                              </ul>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Requested Amount: {c.requestedAmount}</span>
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

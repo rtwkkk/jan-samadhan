@@ -951,19 +951,60 @@ function HomePage() {
 }
 function FloatingCallAgent() {
   const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleCallRequest = async (e) => {
+    e.preventDefault();
+    if (!name || !phone) {
+      setMessage('Name and Phone are required');
+      return;
+    }
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch('http://localhost:5000/api/sarvam/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('Jagriti is calling you now!');
+        setName('');
+        setEmail('');
+        setPhone('');
+      } else {
+        setMessage(data.message || 'Failed to trigger call');
+      }
+    } catch (err) {
+      setMessage('Error connecting to server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="floating-agent">
       {open && (
         <div className="agent-popup">
           <div className="agent-header">
             <b>जागृति (Jagriti) - AI Agent</b>
-            <button onClick={() => setOpen(false)}>×</button>
+            <button onClick={() => { setOpen(false); setMessage(''); }}>×</button>
           </div>
-          <div className="agent-body">
-            <p>हमारा AI एजेंट आपको कॉल करेगा। कृपया अपना नंबर दर्ज करें।<br />(Get a call from us)</p>
-            <input type="tel" placeholder="10-digit Mobile Number" />
-            <button>कॉल मी (Call Me)</button>
-          </div>
+          <form className="agent-body" onSubmit={handleCallRequest}>
+            <p>हमारा AI एजेंट आपको कॉल करेगा। कृपया अपना विवरण दर्ज करें।<br />(Get a call from us)</p>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name (पूरा नाम)" required style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box' }} />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email ID (ईमेल आईडी)" style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box' }} />
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit Mobile Number" required style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box' }} />
+            <button type="submit" disabled={loading} style={{ width: '100%', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'कॉलिंग... (Calling...)' : 'कॉल मी (Call Me)'}
+            </button>
+            {message && <div style={{ marginTop: '10px', fontSize: '13px', color: message.includes('Error') || message.includes('Failed') ? '#dc2626' : '#16a34a', fontWeight: 'bold' }}>{message}</div>}
+          </form>
         </div>
       )}
       <button className="agent-fab" onClick={() => setOpen(!open)}>

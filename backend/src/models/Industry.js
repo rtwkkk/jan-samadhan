@@ -5,8 +5,24 @@ const industrySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  phone: {
+    type: String,
+    required: true
+  },
   industryType: {
     type: String,
+  },
+  location: {
+    type: String,
+  },
+  focusAreas: {
+    type: [String],
+    default: []
   },
   collaborationStatus: {
     type: String,

@@ -24,6 +24,10 @@ const industryCollaborationSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  requestedAmount: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['Pending', 'Active', 'Completed', 'Rejected'],

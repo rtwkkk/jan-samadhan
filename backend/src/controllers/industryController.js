@@ -69,8 +69,8 @@ exports.getCSRRequests = async (req, res) => {
       id: c._id,
       title: c.projectId ? c.projectId.title : 'Unknown',
       institution: c.institutionId ? c.institutionId.name : 'Unknown',
-      requestedAmount: '₹ 5.0 Lakhs', // Mock
-      status: 'Pending'
+      requestedAmount: c.requestedAmount || 'Not Specified',
+      status: c.status
     }));
     res.json(result);
   } catch (err) {
@@ -84,10 +84,10 @@ exports.getIndustryProfile = async (req, res) => {
     if (!ind) return res.status(404).json({ error: 'Not found' });
     
     res.json({
-      name: ind.companyName,
-      sector: ind.industrySector,
-      location: 'Jharkhand',
-      focusAreas: ['Agriculture', 'Water Resources']
+      name: ind.name,
+      sector: ind.industryType || 'Unknown Sector',
+      location: ind.location || 'Unknown Location',
+      focusAreas: ind.focusAreas || []
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

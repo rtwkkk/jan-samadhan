@@ -38,7 +38,7 @@ const jagritiComplaintDraftSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  callSummary: {
+  description: {
     type: String,
     trim: true
   },
@@ -46,11 +46,11 @@ const jagritiComplaintDraftSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  location: {
+  district: {
     type: String,
     trim: true
   },
-  villageCityBlock: {
+  villageBlock: {
     type: String,
     trim: true
   },
@@ -63,7 +63,6 @@ const jagritiComplaintDraftSchema = new mongoose.Schema({
   aiGenerated: {
     title: { type: String },
     department: { type: String },
-    category: { type: String },
     priority: { type: String },
     confidence: { type: Number }
   },
