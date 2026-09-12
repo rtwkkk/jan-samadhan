@@ -4,6 +4,8 @@ import './style.css';
 import './pages.css';
 import { UserDashboard, ProjectDetails, UserProfile } from './user.jsx';
 import { OfficialDashboard } from './official.jsx';
+import { IndustryDashboard } from './industry.jsx';
+import { UniversityDashboard } from './university.jsx';
 
 // Dummy credentials removed
 const CATEGORIES = ['Education', 'Agriculture', 'Healthcare', 'Water Resources', 'Environment', 'Urban Development', 'Accessibility', 'Rural Livelihoods'];
@@ -1366,6 +1368,8 @@ function App() {
 
   if (path === '/my-dashboard' && loggedIn) return <UserDashboard Shell={AuthShell} PageHead={PageHead} user={userData} />;
   if (path === '/official-dashboard' && loggedIn) return <OfficialDashboard Shell={AuthShell} PageHead={PageHead} user={userData} />;
+  if (path === '/industry-dashboard' && loggedIn) return <IndustryDashboard Shell={AuthShell} PageHead={PageHead} user={userData} />;
+  if (path === '/university-dashboard' && loggedIn) return <UniversityDashboard Shell={AuthShell} PageHead={PageHead} user={userData} />;
   if (path === '/profile' && loggedIn) return <UserProfile Shell={AuthShell} PageHead={PageHead} user={userData} setUserData={setUserData} />;
   if (path.startsWith('/project/') && loggedIn) return <ProjectDetails Shell={AuthShell} PageHead={PageHead} user={userData} />;
   if (path === '/login' && !loggedIn) return <LoginPage onLogin={(creds, userResponse) => {
@@ -1376,10 +1380,17 @@ function App() {
     setLoggedIn(role);
     setUserData(userResponse || { name: 'User', role });
     if (role === 'official') location.hash = '#/official-dashboard';
-    else if (role === 'institution') location.hash = '#/my-dashboard';
+    else if (role === 'industry') location.hash = '#/industry-dashboard';
+    else if (role === 'institution') location.hash = '#/university-dashboard';
     else location.hash = '#/my-dashboard';
   }} />;
-  if (path === '/login' && loggedIn) { location.hash = loggedIn === 'official' ? '#/official-dashboard' : '#/my-dashboard'; return null; }
+  if (path === '/login' && loggedIn) { 
+    if (loggedIn === 'official') location.hash = '#/official-dashboard';
+    else if (loggedIn === 'industry') location.hash = '#/industry-dashboard';
+    else if (loggedIn === 'institution') location.hash = '#/university-dashboard';
+    else location.hash = '#/my-dashboard';
+    return null; 
+  }
   if (path === '/register') return <RegisterPage />;
 
   let Page = HomePage;
