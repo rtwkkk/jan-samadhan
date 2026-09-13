@@ -57,7 +57,11 @@ const register = async (req, res) => {
           name,
           email,
           phone,
-          password
+          password,
+          type: (req.body.type || req.body.organizationType || 'Other Higher Education Institution').trim(),
+          aisheCode: (req.body.aisheCode || req.body.cin || req.body.udyamNumber || `TEMP-${Date.now()}`).trim(),
+          district: (req.body.district || 'Ranchi').trim(),
+          emailDomain: (req.body.emailDomain || (email ? email.split('@')[1] : 'unknown.in')).trim()
         });
       } else if (role === 'industry') {
         const Industry = require('../models/Industry');
@@ -139,7 +143,7 @@ const login = async (req, res) => {
       user = await Admin.findOne({ email }).select('+password');
       isAdmin = !!user;
     }
-    
+
     if (!user) {
       const Institution = require('../models/Institution');
       user = await Institution.findOne({ email }).select('+password');
