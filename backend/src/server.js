@@ -52,6 +52,16 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'API is running' });
 });
 
+// Serve React frontend
+const frontendPath = path.join(__dirname, '../../dist');
+
+app.use(express.static(frontendPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+
 // 404 handler
 app.use((req, res, next) => {
   res.status(404).json({ message: 'Route not found' });
