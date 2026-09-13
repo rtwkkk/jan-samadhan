@@ -564,8 +564,8 @@ function Header({ active = 'Home', loggedIn, onLogout }) {
 
   return <>
     {trackOpen && <TrackingModal onClose={() => setTrackOpen(false)} />}
-    <div className="utility"><span>Skip to Content</span><span>Screen Reader Access</span><span>Sitemap</span><i></i><span className="tiny">A-</span><span>A</span><span className="large">A+</span><span>High Contrast</span><span onClick={() => setTrackOpen(true)} style={{cursor: 'pointer', fontWeight: 600, color: '#ffeb3b', padding: '0 12px', borderRight: '1px solid rgba(255,255,255,0.2)'}}>Track</span><b>हिंदी | English</b></div>
-    <header><Seal label="SEAL" src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Jharkhand_Rajakiya_Chihna.svg" /><div className="wordmark"><strong>झारखण्ड सरकार</strong><span>Government of Jharkhand</span><b>Higher Education Department — Societal Innovation Collaboration Portal</b></div><div className="header-space" /><Seal label="NAT" src="https://www.digitalindia.gov.in/wp-content/themes/di-child/assets/images/digital-india.svg" />{loggedIn ? <div className="hdr-user"><button className="outline" onClick={() => location.hash = '#/profile'} style={{ marginRight: '8px' }}>Profile</button><button className="outline" onClick={() => { onLogout && onLogout(); location.hash = '#/' }}>Logout</button></div> : <button onClick={() => location.hash = '#/login'}>Login / Register</button>}</header>
+    <div className="utility"><span>Skip to Content</span><span>Screen Reader Access</span><span>Sitemap</span><i></i><span className="tiny">A-</span><span>A</span><span className="large">A+</span><span>High Contrast</span><span onClick={() => setTrackOpen(true)} style={{ cursor: 'pointer', fontWeight: 600, color: '#ffeb3b', padding: '0 12px', borderRight: '1px solid rgba(255,255,255,0.2)' }}>Track</span><b>हिंदी | English</b></div>
+    <header><Seal label="SEAL" src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Jharkhand_Rajakiya_Chihna.svg" /><div className="wordmark"><strong>झारखण्ड सरकार</strong><span>Government of Jharkhand</span><b>Higher Education Department — Societal Innovation Collaboration Portal</b></div><div className="header-space" /><Seal label="NAT" src="https://www.digitalindia.gov.in/wp-content/themes/di-child/assets/images/digital-india.svg" />{loggedIn ? <div className="hdr-user"><button className="outline" onClick={() => { onLogout && onLogout(); location.hash = '#/' }}>Logout</button></div> : <button onClick={() => location.hash = '#/login'}>Login / Register</button>}</header>
     {!loggedIn && <nav className="modern-nav"><div className="nav-container">{['Home', 'Submit a Challenge', 'Browse Challenges', 'For Institutions', 'For Industry', 'Dashboard', 'About', 'Contact'].map(x => { const href = x === 'Home' ? '#/' : x === 'Dashboard' && loggedIn ? '#/my-dashboard' : `#/${x.toLowerCase().replaceAll(' ', '-')}`; return <a className={active === x ? 'selected' : ''} key={x} href={href}><span>{x}</span></a> })}</div></nav>}
   </>
 }
@@ -646,15 +646,20 @@ function Stats() {
   return <section className="stats">{metrics.map(x => <div className="stat" key={x[1]}><b>{x[0]}</b><span>{x[1]}</span></div>)}</section>;
 }
 function MapSection() { let rows = [['Ranchi', '284', '18'], ['Jamshedpur (East Singhbhum)', '213', '16'], ['Dhanbad', '196', '14'], ['Bokaro', '142', '10'], ['Hazaribagh', '98', '7']]; return <section className="map-section"><SectionTitle sub="Challenge submissions and institutional participation across 24 districts">Jharkhand at a Glance</SectionTitle><div className="map-layout"><div><div className="map-box"><div className="hexes">{Array.from({ length: 24 }, (_, i) => <i key={i} />)}</div></div><small>[Map: Jharkhand districts — placeholder geometry, to be replaced with GeoJSON district outline]</small></div><div className="table-side"><div className="legend">Participation: <span><i />Low</span><span><i />Moderate</span><span><i />High</span><span><i />Very High</span></div><div className="data-table"><b>District</b><b>Challenges</b><b>Institutions</b>{rows.flatMap(r => r.map((c, i) => <span key={r[0] + i}>{c}</span>))}</div></div></div></section> }
-function Footer() { let cols = [['About', 'About the Portal', 'Mission & Vision', 'Higher Education Dept.', 'Contact Us'], ['Related Links', 'jharkhand.gov.in', 'MyGov.in', 'Digital India', 'National Informatics Centre (NIC)'], ['Policies', 'Terms & Conditions', 'Privacy Policy', 'Accessibility Statement', 'Copyright Policy'], ['Grievance & Support', 'Grievance Redressal', 'RTI', 'Helpdesk: 1800-XXX-XXXX', 'Directorate of Higher Education, Ranchi, Jharkhand']]; return <footer><div className="footer-top">{cols.map((c, i) => <div key={c[0]}><b>{c[0]}</b>{c.slice(1).map(x => {
-  if (x === 'jharkhand.gov.in') return <a key={x} href="https://jharkhand.gov.in/" target="_blank" rel="noopener noreferrer" style={{color:'inherit', textDecoration:'none'}}>{x}</a>;
-  if (x === 'MyGov.in') return <a key={x} href="https://www.mygov.in/" target="_blank" rel="noopener noreferrer" style={{color:'inherit', textDecoration:'none'}}>{x}</a>;
-  if (x === 'Digital India') return <a key={x} href="https://www.digitalindia.gov.in/" target="_blank" rel="noopener noreferrer" style={{color:'inherit', textDecoration:'none'}}>{x}</a>;
-  if (x === 'National Informatics Centre (NIC)') return <a key={x} href="https://xn--m1bet4hqd2b.xn--11b7cb3a6a.xn--h2brj9c/" target="_blank" rel="noopener noreferrer" style={{color:'inherit', textDecoration:'none'}}>{x}</a>;
-  return <span key={x}>{x}</span>;
-})}{i === 3 && <aside><i>𝕏</i><i>f</i><i>▶</i></aside>}</div>)}</div><div className="availability"><b>Also Available On:</b><span>[Badge: Google Play]</span><span>[Badge: App Store]</span></div><div className="footer-bottom"><span>© Government of Jharkhand. Content Owned by Higher Education Department. Last Updated: 27 August 2026.</span><span>Visitors: 4,82,193 &nbsp;|&nbsp; Best viewed in 1920x1080 resolution</span></div></footer> }
+function Footer() {
+  let cols = [['About', 'About the Portal', 'Mission & Vision', 'Higher Education Dept.', 'Contact Us'], ['Related Links', 'jharkhand.gov.in', 'MyGov.in', 'Digital India', 'National Informatics Centre (NIC)'], ['Policies', 'Terms & Conditions', 'Privacy Policy', 'Accessibility Statement', 'Copyright Policy'], ['Grievance & Support', 'Grievance Redressal', 'RTI', 'Helpdesk: 1800-XXX-XXXX', 'Directorate of Higher Education, Ranchi, Jharkhand']]; return <footer><div className="footer-top">{cols.map((c, i) => <div key={c[0]}><b>{c[0]}</b>{c.slice(1).map(x => {
+    if (x === 'jharkhand.gov.in') return <a key={x} href="https://jharkhand.gov.in/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{x}</a>;
+    if (x === 'MyGov.in') return <a key={x} href="https://www.mygov.in/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{x}</a>;
+    if (x === 'Digital India') return <a key={x} href="https://www.digitalindia.gov.in/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{x}</a>;
+    if (x === 'National Informatics Centre (NIC)') return <a key={x} href="https://xn--m1bet4hqd2b.xn--11b7cb3a6a.xn--h2brj9c/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{x}</a>;
+    return <span key={x}>{x}</span>;
+  })}{i === 3 && <aside><i>𝕏</i><i>f</i><i>▶</i></aside>}</div>)}</div><div className="availability"><b>Also Available On:</b><span>[Badge: Google Play]</span><span>[Badge: App Store]</span></div><div className="footer-bottom"><span>© Government of Jharkhand. Content Owned by Higher Education Department. Last Updated: 27 August 2026.</span><span>Visitors: 4,82,193 &nbsp;|&nbsp; Best viewed in 1920x1080 resolution</span></div></footer>
+}
 const rows = [['SICP-0142', 'Rainwater Harvesting Systems for Rural Schools', 'Water Resources', 'Ranchi', 'In Progress', 'Dr. A. Verma'], ['SICP-0139', 'Low-Cost Soil Health Monitoring Kit', 'Agriculture', 'Dhanbad', 'Team Formed', 'Prof. S. Kumar'], ['SICP-0136', 'Mobile Health Camps Scheduling Platform', 'Healthcare', 'Jamshedpur', 'Pending Review', '—'], ['SICP-0131', 'Digital Literacy for Tribal Communities', 'Education', 'Khunti', 'Completed', 'Dr. R. Oraon'], ['SICP-0128', 'Urban Flood Early Warning System', 'Urban Development', 'Ranchi', 'In Progress', 'Prof. N. Singh'], ['SICP-0124', 'Solar Micro-Grid for Remote Villages', 'Environment', 'Gumla', 'Team Formed', 'Dr. P. Mahato']];
-function Shell({ active, children, loggedIn, onLogout }) { return <div className="page"><Header active={active} loggedIn={loggedIn} onLogout={onLogout} />{children}<Footer /><FloatingCallAgent /></div> }
+function Shell({ active, children, loggedIn, onLogout }) { 
+  const isHomeOrLogin = location.hash === '#/' || location.hash === '' || location.hash === '#/login';
+  return <div className="page"><Header active={active} loggedIn={loggedIn} onLogout={onLogout} />{children}<Footer />{isHomeOrLogin && <FloatingCallAgent />}</div> 
+}
 function PageHead({ crumb, title, subtitle, actions }) { return <div className="page-head"><div>{crumb && <small>{crumb}</small>}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{actions && <aside>{actions}</aside>}</div> }
 function SubmitPage() {
   const [formData, setFormData] = useState({
@@ -768,7 +773,7 @@ function SubmitPage() {
 function InstitutionPage() { return <Shell active="For Institutions"><PageHead title="Institution Dashboard" subtitle="Birla Institute of Technology, Mesra — Assigned Challenges Overview" actions={<button className="outline">Export Report</button>} /><main className="institution"><aside className="filters"><h3>Filters</h3>{['Status', 'Category', 'Priority'].map((g, i) => <div key={g}><b>{g}</b>{(i === 0 ? ['Pending Review', 'Team Formed', 'In Progress', 'Completed'] : i === 1 ? ['Education', 'Agriculture', 'Healthcare', 'Water Resources', 'Environment'] : ['High', 'Medium', 'Low']).map(x => <label key={x}><input type="checkbox" /> {x}</label>)}</div>)}<button>Apply Filters</button></aside><div><section className="bar-chart"><h3>Category-wise Assignment Distribution</h3><div>{[['18', 'Education'], ['12', 'Agriculture'], ['9', 'Healthcare'], ['7', 'Water Res.'], ['14', 'Environment'], ['5', 'Urban Dev.']].map((x, i) => <span key={x[1]}><i style={{ height: `${+x[0] * 6.8}px` }} /><b>{x[0]}</b><small>{x[1]}</small></span>)}</div></section><Table rows={rows} /></div></main></Shell> }
 function Table({ rows: data, analytics = false }) { let headers = analytics ? ['District', 'Submitted', 'In Progress', 'Completed', 'Institutions Active'] : ['ID', 'Challenge Title', 'Category', 'District', 'Status', 'Team Lead']; return <div className="records"><div className="record-row head">{headers.map(x => <b key={x}>{x}</b>)}</div>{data.map((r, i) => <div className="record-row" key={i}>{r.map((x, j) => <span key={j} className={j === 4 && !analytics ? 'status' : ''}>{x}</span>)}</div>)}</div> }
 function DashboardPage() { let districts = [['Ranchi', '284', '62', '156', '18'], ['Dhanbad', '196', '41', '98', '14'], ['Jamshedpur (East Singhbhum)', '213', '55', '104', '16'], ['Bokaro', '142', '30', '76', '10'], ['Hazaribagh', '98', '22', '48', '7'], ['Deoghar', '87', '19', '41', '6']]; return <Shell active="Dashboard"><PageHead title="Government Analytics Dashboard" subtitle="Statewide performance overview — Higher Education Department, Jharkhand" actions={<><select><option>District: All Districts</option></select><button className="outline">Export PDF</button><button className="outline">Export Excel</button></>} /><main className="analytics"><section className="metrics">{[['1,284', 'Total Challenges', '▲ +8.2% vs last quarter'], ['347', 'Solutions Deployed', '▲ +12.4% vs last quarter'], ['96', 'Institutions Onboarded', '▲ +3 vs last quarter'], ['61%', 'Avg. Resolution Rate', '▼ -1.1% vs last quarter'], ['18 days', 'Avg. AI Routing Time', '▲ -2 days vs last quarter']].map(x => <div key={x[1]}><b>{x[0]}</b><span>{x[1]}</span><small>{x[2]}</small></div>)}</section><div className="chart-row"><section className="line-chart"><h3>Monthly Challenge Submissions (2026)</h3><div className="line"><i /><i /><i /><i /><i /><i /></div><div className="months">Jan Feb Mar Apr May Jun Jul Aug</div><div className="month-values">62 78 91 84 110 132 145 168</div></section><section className="donut"><h3>Status Distribution</h3><div><i /><aside><span>■ &nbsp;Completed (27%)</span><span>■ &nbsp;In Progress (34%)</span><span>■ &nbsp;Team Formed (21%)</span><span>■ &nbsp;Pending Review (18%)</span></aside></div></section></div><section className="district"><h3>District-wise Challenge Volume</h3><Table rows={districts} analytics /></section></main></Shell> }
-function IndustryPage() { let cards = [['SICP-0142', 'Water Resources', 'High Priority', 'Rainwater Harvesting Systems for Rural Schools', 'BIT Mesra  •  Ranchi District', 'Seeking industry partners for low-cost filtration hardware and IoT-based tank monitoring to scale a pilot across 40 government schools.', 'Seeking: Hardware Sponsorship, Technical Mentorship'], ['SICP-0136', 'Healthcare', 'Medium Priority', 'Mobile Health Camps Scheduling Platform', 'XLRI Jamshedpur  •  Jamshedpur District', 'Requires cloud infrastructure support and API integration expertise to connect with district health databases.', 'Seeking: Cloud Credits, API Integration Support'], ['SICP-0128', 'Urban Development', 'High Priority', 'Urban Flood Early Warning System', 'NIT Jamshedpur  •  Ranchi District', 'Looking for sensor hardware manufacturers and data science mentors to refine the flood prediction model.', 'Seeking: Sensor Hardware, Data Science Mentorship'], ['SICP-0124', 'Environment', 'Medium Priority', 'Solar Micro-Grid for Remote Villages', 'Central University of Jharkhand  •  Gumla District', 'Seeking solar equipment vendors and funding support to expand the micro-grid pilot to 12 additional villages.', 'Seeking: Equipment Funding, Field Deployment Support']]; return <Shell active="For Industry"><PageHead crumb="Home  /  For Industry" title="Industry Collaboration Opportunities" subtitle="Challenges seeking industry mentorship, funding, or technical partnership" /><main className="industry"><div className="search"><input placeholder="Search challenges by keyword, category, or district..." /><select><option>Category: All</option></select><select><option>District: All</option></select><select><option>Sort: Newest First</option></select></div><p>Showing 6 of 84 challenges seeking industry collaboration</p>{cards.map((c, i) => <article className={'opportunity ' + (c[2][0] === 'H' ? 'high' : 'medium')} key={c[0]}><div><small>{c[0]} &nbsp; <b>{c[1]}</b> &nbsp; <em>{c[2]}</em></small><h2>{c[3]}</h2><span>{c[4]}</span><p>{c[5]}</p><strong>{c[6]}</strong></div><aside><button>Express Interest</button><a>View Details →</a></aside></article>)}</main></Shell> }
+function IndustryPage() { let cards = [['SICP-0142', 'Water Resources', 'High Priority', 'Rainwater Harvesting Systems for Rural Schools', 'BIT Mesra  •  Ranchi District', 'Seeking industry partners for low-cost filtration hardware and IoT-based tank monitoring to scale a pilot across 40 government schools.', 'Seeking: Hardware Sponsorship, Technical Mentorship'], ['SICP-0136', 'Healthcare', 'Medium Priority', 'Mobile Health Camps Scheduling Platform', 'XLRI Jamshedpur  •  Jamshedpur District', 'Requires cloud infrastructure support and API integration expertise to connect with district health databases.', 'Seeking: Cloud Credits, API Integration Support'], ['SICP-0128', 'Urban Development', 'High Priority', 'Urban Flood Early Warning System', 'NIT Jamshedpur  •  Ranchi District', 'Looking for sensor hardware manufacturers and data science mentors to refine the flood prediction model.', 'Seeking: Sensor Hardware, Data Science Mentorship'], ['SICP-0124', 'Environment', 'Medium Priority', 'Solar Micro-Grid for Remote Villages', 'Central University of Jharkhand  •  Gumla District', 'Seeking solar equipment vendors and funding support to expand the micro-grid pilot to 12 additional villages.', 'Seeking: Equipment Funding, Field Deployment Support']]; return <Shell active="For Industry"><PageHead crumb="Home  /  For Industry" title="Industry Collaboration Opportunities" subtitle="Challenges seeking industry mentorship, funding, or technical partnership" /><main className="industry"><div className="search"><input placeholder="Search challenges by keyword, category, or district..." /><select><option>Category: All</option></select><select><option>District: All</option></select><select><option>Sort: Newest First</option></select></div><p>Showing 6 of 84 challenges seeking industry collaboration</p>{cards.map((c, i) => <article className={'opportunity ' + (c[2][0] === 'H' ? 'high' : 'medium')} key={c[0]}><div><small>{c[0]} &nbsp; <b>{c[1]}</b> &nbsp; <em>{c[2]}</em></small><h2>{c[3]}</h2><span>{c[4]}</span><p>{c[5]}</p><strong>{c[6]}</strong></div><aside><button onClick={() => location.hash = '#/login'}>Express Interest</button><a style={{cursor: 'pointer'}} onClick={() => location.hash = '#/login'}>View Details →</a></aside></article>)}</main></Shell> }
 function HomePage() {
   const [activeStep, setActiveStep] = useState(0);
 
@@ -1105,15 +1110,31 @@ function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
+  
+  const [industryData, setIndustryData] = useState({
+    brandName: '', organizationType: '', industrySector: '', primaryBusinessArea: '',
+    yearEstablished: '', headquarters: '', website: '', district: '', state: 'Jharkhand',
+    cin: '', llpin: '', gstin: '', udyamNumber: '', pan: '',
+    expertiseAreas: '', relevantProjects: '', rndCapability: '', geoAreas: '',
+    authRepName: '', authRepDesignation: '', authRepEmail: '', authRepPhone: ''
+  });
+
+  const handleIndChange = (e) => setIndustryData({ ...industryData, [e.target.name]: e.target.value });
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setErr('');
     try {
+      const payload = {
+        name, email, password, phone, role: role === 'official' ? 'admin' : role,
+        ...industryData,
+        collaborationCapabilities: chips
+      };
+      
       const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, phone, role: role === 'official' ? 'admin' : role })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
@@ -1264,23 +1285,23 @@ function RegisterPage() {
       <div className="section-divider">Organization Details</div>
       <div className="two">
         <label>Legal Entity Name <b>*</b><input value={name} onChange={e => setName(e.target.value)} required /></label>
-        <label>Brand / Trade Name<input /></label>
+        <label>Brand / Trade Name<input name="brandName" value={industryData.brandName} onChange={handleIndChange} /></label>
       </div>
       <div className="two">
-        <label>Organization Type <b>*</b><select><option value="">Select type</option><option>Private Limited Company</option><option>Public Limited Company</option><option>LLP</option><option>Partnership Firm</option><option>Proprietorship</option><option>Section 8 Company</option><option>NGO / Non-Profit</option><option>MSME</option><option>Public Sector Enterprise</option><option>Research & Technology Organization</option><option>CSR Foundation / Corporate Foundation</option><option>Other</option></select></label>
-        <label>Industry Sector <b>*</b><input /></label>
+        <label>Organization Type <b>*</b><select name="organizationType" value={industryData.organizationType} onChange={handleIndChange}><option value="">Select type</option><option>Private Limited Company</option><option>Public Limited Company</option><option>LLP</option><option>Partnership Firm</option><option>Proprietorship</option><option>Section 8 Company</option><option>NGO / Non-Profit</option><option>MSME</option><option>Public Sector Enterprise</option><option>Research & Technology Organization</option><option>CSR Foundation / Corporate Foundation</option><option>Other</option></select></label>
+        <label>Industry Sector <b>*</b><input name="industrySector" value={industryData.industrySector} onChange={handleIndChange} /></label>
       </div>
       <div className="two">
-        <label>Primary Business Area <b>*</b><input /></label>
-        <label>Year Established<input type="number" placeholder="e.g. 2005" /></label>
+        <label>Primary Business Area <b>*</b><input name="primaryBusinessArea" value={industryData.primaryBusinessArea} onChange={handleIndChange} /></label>
+        <label>Year Established<input type="number" name="yearEstablished" value={industryData.yearEstablished} onChange={handleIndChange} placeholder="e.g. 2005" /></label>
       </div>
       <div className="two">
-        <label>Headquarters<input /></label>
-        <label>Website<input type="url" placeholder="https://" /></label>
+        <label>Headquarters<input name="headquarters" value={industryData.headquarters} onChange={handleIndChange} /></label>
+        <label>Website<input type="url" name="website" value={industryData.website} onChange={handleIndChange} placeholder="https://" /></label>
       </div>
       <div className="two">
-        <label>District<select><option value="">Select district</option>{DISTRICTS.map(d => <option key={d}>{d}</option>)}</select></label>
-        <label>State<input defaultValue="Jharkhand" /></label>
+        <label>District<select name="district" value={industryData.district} onChange={handleIndChange}><option value="">Select district</option>{DISTRICTS.map(d => <option key={d}>{d}</option>)}</select></label>
+        <label>State<input name="state" value={industryData.state} onChange={handleIndChange} defaultValue="Jharkhand" /></label>
       </div>
       <button type="button" onClick={() => setStep(2)}>Next Step →</button>
     </>}
@@ -1290,14 +1311,14 @@ function RegisterPage() {
       <div className="section-divider">Registration Information</div>
       <small style={{ color: '#747a76', fontSize: '11px', marginTop: '-10px' }}>Fill applicable fields only. Not all identifiers are required.</small>
       <div className="two">
-        <label>CIN<input /></label>
-        <label>LLPIN<input /></label>
+        <label>CIN<input name="cin" value={industryData.cin} onChange={handleIndChange} /></label>
+        <label>LLPIN<input name="llpin" value={industryData.llpin} onChange={handleIndChange} /></label>
       </div>
       <div className="two">
-        <label>GSTIN<input /></label>
-        <label>Udyam Registration Number<input /></label>
+        <label>GSTIN<input name="gstin" value={industryData.gstin} onChange={handleIndChange} /></label>
+        <label>Udyam Registration Number<input name="udyamNumber" value={industryData.udyamNumber} onChange={handleIndChange} /></label>
       </div>
-      <label>PAN<input /></label>
+      <label>PAN<input name="pan" value={industryData.pan} onChange={handleIndChange} /></label>
       <div className="two">
         <button type="button" className="outline" style={{ background: '#fff', color: '#064477' }} onClick={() => setStep(1)}>← Previous</button>
         <button type="button" onClick={() => setStep(3)}>Next Step →</button>
@@ -1310,11 +1331,11 @@ function RegisterPage() {
       <label>How can your organization contribute?</label>
       <div className="chips-wrap">{COLLAB_CHIPS.map(c => <span key={c} className={'chip' + (chips.includes(c) ? ' on' : '')} onClick={() => toggleChip(c)}>{c}</span>)}</div>
       <div className="section-divider">Expertise</div>
-      <label>Technology / Expertise Areas <b>*</b><input /></label>
-      <label>Relevant Projects<textarea style={{ height: '64px' }} /></label>
+      <label>Technology / Expertise Areas <b>*</b><input name="expertiseAreas" value={industryData.expertiseAreas} onChange={handleIndChange} /></label>
+      <label>Relevant Projects<textarea name="relevantProjects" value={industryData.relevantProjects} onChange={handleIndChange} style={{ height: '64px' }} /></label>
       <div className="two">
-        <label>R&D Capability<input /></label>
-        <label>Geographical Areas of Operation<input /></label>
+        <label>R&D Capability<input name="rndCapability" value={industryData.rndCapability} onChange={handleIndChange} /></label>
+        <label>Geographical Areas of Operation<input name="geoAreas" value={industryData.geoAreas} onChange={handleIndChange} /></label>
       </div>
       <div className="two">
         <button type="button" className="outline" style={{ background: '#fff', color: '#064477' }} onClick={() => setStep(2)}>← Previous</button>
@@ -1326,8 +1347,8 @@ function RegisterPage() {
     {role === 'industry' && step === 4 && <>
       <div className="section-divider">Authorized Representative</div>
       <div className="two">
-        <label>Full Name <b>*</b><input /></label>
-        <label>Designation <b>*</b><input /></label>
+        <label>Full Name <b>*</b><input name="authRepName" value={industryData.authRepName} onChange={handleIndChange} /></label>
+        <label>Designation <b>*</b><input name="authRepDesignation" value={industryData.authRepDesignation} onChange={handleIndChange} /></label>
       </div>
       <div className="two">
         <label>Official Email <b>*</b><input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></label>
@@ -1359,6 +1380,66 @@ function RegisterPage() {
         <p>Toll Free: 1800-XXX-XXXX<br />Email: sicp-help@jharkhand.gov.in<br />Working Hours: Mon–Sat, 9:00 AM – 6:00 PM</p>
       </div>
     </aside></main></Shell>
+}
+
+function BrowseChallengesPage() {
+  const [challenges, setChallenges] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/public/challenges/completed')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
+      .then(data => {
+        setChallenges(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Failed to fetch challenges');
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <Shell active="Browse Challenges">
+      <PageHead title="Completed & Deployed Challenges" subtitle="Explore solutions successfully implemented across Jharkhand." />
+      <div style={{ padding: '32px', maxWidth: '1200px', margin: '0 auto', minHeight: '500px' }}>
+        {loading && <div className="placeholder" style={{ padding: '40px', background: 'transparent' }}>Loading challenges...</div>}
+        {error && <div className="placeholder" style={{ padding: '40px', background: 'transparent', color: '#b91c1c' }}>{error}</div>}
+        {!loading && !error && challenges.length === 0 && (
+          <div className="placeholder" style={{ padding: '40px', background: 'transparent' }}>No completed challenges found yet.</div>
+        )}
+        {!loading && !error && challenges.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
+            {challenges.map(c => (
+              <article key={c._id} style={{ border: '1px solid #dfe4e0', borderRadius: '6px', background: '#fff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <small style={{ color: '#087c4b', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{c.category} • {c.department}</small>
+                    <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>{c.status.toUpperCase()}</span>
+                  </div>
+                  <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: '#0f172a', lineHeight: 1.4 }}>{c.title}</h3>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description}</p>
+                </div>
+                <div style={{ padding: '16px 20px', background: '#f8fafc', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Location:</b> <span style={{ color: '#64748b' }}>{c.district}, {c.villageCityBlock}</span></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Impact:</b> <span style={{ color: '#64748b' }}>~{c.peopleAffected} People</span></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Institution:</b> <span style={{ color: '#64748b' }}>{c.institutionAssigned}</span></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Project Lead:</b> <span style={{ color: '#64748b' }}>{c.projectLead}</span></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Team:</b> <span style={{ color: '#64748b' }}>{c.teamMembers}</span></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Industry:</b> <span style={{ color: '#64748b' }}>{c.industryPartner}</span></div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}><b style={{ color: '#334155', width: '80px', flexShrink: 0 }}>Completed:</b> <span style={{ color: '#087c4b', fontWeight: 600 }}>{new Date(c.resolvedAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span></div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
 }
 
 function App() {
@@ -1425,17 +1506,18 @@ function App() {
     else if (role === 'institution') location.hash = '#/university-dashboard';
     else location.hash = '#/my-dashboard';
   }} />;
-  if (path === '/login' && loggedIn) { 
+  if (path === '/login' && loggedIn) {
     if (loggedIn === 'official') location.hash = '#/official-dashboard';
     else if (loggedIn === 'industry') location.hash = '#/industry-dashboard';
     else if (loggedIn === 'institution') location.hash = '#/university-dashboard';
     else location.hash = '#/my-dashboard';
-    return null; 
+    return null;
   }
   if (path === '/register') return <RegisterPage />;
 
   let Page = HomePage;
   if (path === '/submit-a-challenge') Page = SubmitPage;
+  if (path === '/browse-challenges') Page = BrowseChallengesPage;
   if (path === '/for-institutions') Page = InstitutionPage;
   if (path === '/dashboard') Page = loggedIn ? () => <UserDashboard Shell={AuthShell} PageHead={PageHead} user={userData} /> : DashboardPage;
   if (path === '/for-industry') Page = IndustryPage;

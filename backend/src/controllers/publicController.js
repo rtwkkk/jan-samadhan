@@ -319,7 +319,61 @@ const trackEntity = async (req, res) => {
   }
 };
 
+// @desc    Get completed/deployed challenges
+// @route   GET /api/public/challenges/completed
+// @access  Public
+const getCompletedChallenges = async (req, res) => {
+  try {
+    const challenges = await Challenge.find({ status: 'resolved' })
+      .populate('institution', 'name')
+      .lean();
+
+    // We'll augment each challenge with Project, StudentTeam, and IndustryCollaboration details
+    const Project = require('../models/Project');
+    const StudentTeam = require('../models/StudentTeam');
+    const IndustryCollaboration = require('../models/IndustryCollaboration');
+    const Industry = require('../models/Industry');
+
+    const augmentedChallenges = await Promise.all(challenges.map(async (c) => {
+      const project = await Project.findOne({ challengeId: c._id }).lean();
+      let team = null;
+      let industryCollab = null;
+      
+      if (project) {
+        team = await StudentTeam.findOne({ projectId: project._id }).lean();
+        industryCollab = await IndustryCollaboration.findOne({ projectId: project._id })
+          .populate('industryId', 'name')
+          .lean();
+      }
+
+      return {
+        _id: c._id,
+        title: c.title,
+        description: c.description,
+        category: c.category || 'General',
+        department: c.department,
+        district: c.district,
+        villageCityBlock: c.villageCityBlock,
+        peopleAffected: c.peopleAffected,
+        urgencySeverity: c.urgencySeverity,
+        status: c.status,
+        resolvedAt: c.resolvedAt || c.updatedAt,
+        institutionAssigned: c.assignment?.institution_name || (c.institution && c.institution.name) || 'Not Assigned',
+        projectLead: c.assignment?.professor_name || (project && project.facultyMentor) || 'Not Assigned',
+        teamMembers: (team && team.students) ? team.students.join(', ') : 'Not Available',
+        industryPartner: (industryCollab && industryCollab.industryId) ? industryCollab.industryId.name : 'None',
+        projectDetails: project ? `Project: ${project.title} - ${project.status}` : 'Details not available'
+      };
+    }));
+
+    res.json(augmentedChallenges);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getStats,
-  trackEntity
+  trackEntity,
+  getCompletedChallenges
 };

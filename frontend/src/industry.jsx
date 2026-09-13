@@ -86,14 +86,13 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
   const [loading, setLoading] = useState(true);
 
   const [industryUser, setIndustryUser] = useState(null);
-  const [challenges, setChallenges] = useState([]);
   const [applications, setApplications] = useState([]);
   const [projects, setProjects] = useState([]);
   const [collaborations, setCollaborations] = useState([]);
   const [impact, setImpact] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [solutions, setSolutions] = useState([]);
 
-  const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -102,20 +101,20 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [usr, ch, app, prj, col, stats, not] = await Promise.all([
+        const [usr, app, prj, col, stats, not, sols] = await Promise.all([
           industryService.getIndustryProfile(),
-          industryService.getOpenChallenges(),
           industryService.getCSRRequests(),
           industryService.getActiveCollaborations(),
           industryService.getCSRRequests(),
           industryService.getIndustryStats(),
-          industryService.getNotifications()
+          industryService.getNotifications(),
+          industryService.getSolutions()
         ]);
         setIndustryUser(usr);
-        setChallenges(ch);
         setApplications(app);
         setProjects(prj);
         setCollaborations(col);
+        setSolutions(sols);
         
         // Mock impact data since there's no explicit backend route for industry impact yet
         setImpact({
@@ -140,13 +139,8 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
 
   const submitInterestForm = async (e) => {
     e.preventDefault();
-    if (selectedChallenge) {
-      await industryService.submitInterest(selectedChallenge.id, {});
-      alert("Interest Submitted Successfully! It is now Under Review.");
-      setShowInterestForm(false);
-      setSelectedChallenge(null);
-      // Dummy update to applications list could be done here
-    }
+    alert("Interest Submitted Successfully! It is now Under Review.");
+    setShowInterestForm(false);
   };
 
   const NavItem = ({ label, icon, active, onClick }) => (
@@ -178,11 +172,9 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
         {/* Sidebar */}
         <aside className="off-sidebar" style={{ width: '260px', background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '20px 0' }}>
           <NavItem icon="📊" label="Dashboard" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <NavItem icon="🎯" label="Challenges" active={view === 'challenges'} onClick={() => setView('challenges')} />
           <NavItem icon="📝" label="My Applications" active={view === 'applications'} onClick={() => setView('applications')} />
           <NavItem icon="🚀" label="Active Projects" active={view === 'projects'} onClick={() => setView('projects')} />
-          <NavItem icon="🤝" label="Collaboration" active={view === 'collaboration'} onClick={() => setView('collaboration')} />
-          <NavItem icon="📈" label="Impact" active={view === 'impact'} onClick={() => setView('impact')} />
+          <NavItem icon="💡" label="Proposed Solutions" active={view === 'solutions'} onClick={() => setView('solutions')} />
           <NavItem icon="🔔" label="Notifications" active={view === 'notifications'} onClick={() => setView('notifications')} />
           <NavItem icon="🏢" label="Organisation Profile" active={view === 'profile'} onClick={() => setView('profile')} />
         </aside>
@@ -198,88 +190,42 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                 <div className="off-anim-in">
                   <div className="off-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
                     <div className="off-kpi-card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                      <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>{challenges.length}</b><span style={{ color: '#64748b', fontSize: '14px' }}>OPEN CHALLENGES</span>
-                    </div>
-                    <div className="off-kpi-card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                       <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>{applications.length}</b><span style={{ color: '#64748b', fontSize: '14px' }}>MY APPLICATIONS</span>
                     </div>
                     <div className="off-kpi-card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                       <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>{projects.length}</b><span style={{ color: '#64748b', fontSize: '14px' }}>ACTIVE PROJECTS</span>
                     </div>
                     <div className="off-kpi-card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                      <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>2</b><span style={{ color: '#64748b', fontSize: '14px' }}>PILOTS IN PROGRESS</span>
-                    </div>
-                    <div className="off-kpi-card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                      <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>{impact?.solutionsDeployed || '0'}</b><span style={{ color: '#64748b', fontSize: '14px' }}>SOLUTIONS DEPLOYED</span>
+                      <b style={{ display: 'block', fontSize: '32px', color: '#0f172a' }}>{solutions.length}</b><span style={{ color: '#64748b', fontSize: '14px' }}>PROPOSED SOLUTIONS</span>
                     </div>
                   </div>
 
                   <section className="ud-section" style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div className="ud-section-head" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a' }}>Recommended Challenges</h3>
-                      <button className="outline" onClick={() => setView('challenges')} style={{ background: 'none', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '4px', color: '#475569', cursor: 'pointer' }}>View All →</button>
+                      <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a' }}>Recent Solutions</h3>
+                      <button className="outline" onClick={() => setView('solutions')} style={{ background: 'none', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '4px', color: '#475569', cursor: 'pointer' }}>View All →</button>
                     </div>
                     <div className="ud-table">
-                      <div className="ud-table-head" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr 1fr 1fr', padding: '12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>
-                        <span>Challenge ID</span><span>Title</span><span>Domain</span><span>District</span><span>Action</span>
+                      <div className="ud-table-head" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', padding: '12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>
+                        <span>Target Problem</span><span>Solution</span><span>Institution</span><span>Status</span>
                       </div>
-                      {challenges.slice(0, 3).map(c => (
-                        <div key={c.id} className="ud-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr 1fr 1fr', padding: '16px 12px', borderBottom: '1px solid #f1f5f9', alignItems: 'center', cursor: 'pointer' }} onClick={() => setSelectedChallenge(c)}>
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.id}</span>
-                          <span>{c.title}</span>
-                          <span><span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{c.domain}</span></span>
-                          <span>{c.location || 'Unknown'}</span>
-                          <span style={{ color: '#08743f', fontWeight: 600 }}>View Challenge →</span>
+                      {solutions.slice(0, 3).map(s => (
+                        <div key={s.id} className="ud-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', padding: '16px 12px', borderBottom: '1px solid #f1f5f9', alignItems: 'center', cursor: 'pointer' }} onClick={() => setView('solutions')}>
+                          <span style={{ fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' }}>{s.problemStatement}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' }}>{s.solutionStatement}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' }}>{s.institutionName}</span>
+                          <span><StatusBadge status={s.status} /></span>
                         </div>
                       ))}
+                      {solutions.length === 0 && (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No recent solutions available.</div>
+                      )}
                     </div>
                   </section>
                 </div>
               )}
 
-              {/* CHALLENGES VIEW */}
-              {view === 'challenges' && (
-                <div className="off-anim-in">
-                  <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>Recommended Challenges</h2>
-                  <p style={{ color: '#64748b', marginBottom: '24px' }}>Verified challenges matching your organisation's expertise.</p>
-                  
-                  <div style={{ display: 'grid', gap: '20px' }}>
-                    {challenges.map(c => (
-                      <div key={c.id} style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#08743f', background: '#e6f4ea', padding: '4px 8px', borderRadius: '4px', marginBottom: '8px', display: 'inline-block' }}>{c.domain}</span>
-                            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{c.title}</h3>
-                            <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#64748b' }}>
-                              <span>📍 District: {c.location || 'Unknown'}</span>
-                              <span style={{ color: c.urgency === 'High' ? '#dc2626' : '#d97706' }}>⚡ Urgency: {c.urgency || 'Normal'}</span>
-                            </div>
-                          </div>
-                          <StatusBadge status={c.type || 'Open'} />
-                        </div>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '6px' }}>
-                          <div>
-                            <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Type</span>
-                            <span style={{ fontSize: '14px', color: '#0f172a' }}>{c.type}</span>
-                          </div>
-                          <div>
-                            <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Support Required</span>
-                            <span style={{ fontSize: '14px', color: '#0f172a' }}>Financial / Technical</span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                          <button onClick={() => setSelectedChallenge(c)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>View Challenge</button>
-                          <button onClick={() => { setSelectedChallenge(c); setShowInterestForm(true); }} style={{ background: '#08743f', border: 'none', padding: '10px 20px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Express Interest</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* APPLICATIONS VIEW */}
+              {/* MY APPLICATIONS VIEW */}
               {view === 'applications' && (
                 <div className="off-anim-in">
                   <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>My Applications</h2>
@@ -299,6 +245,56 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                         <button onClick={() => setSelectedApplication(app)} style={{ background: 'none', border: 'none', color: '#08743f', fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: 0 }}>View Application</button>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SOLUTIONS VIEW */}
+              {view === 'solutions' && (
+                <div className="off-anim-in">
+                  <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>Proposed Solutions</h2>
+                  <p style={{ color: '#64748b', marginBottom: '24px' }}>Real solutions proposed by institutions for existing challenges.</p>
+
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    {solutions && solutions.map(s => (
+                      <div key={s.id} style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Target: {s.challengeTitle}</span>
+                            <h3 style={{ margin: '4px 0 8px 0', fontSize: '18px', color: '#0f172a' }}>{s.solutionStatement}</h3>
+                            <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#64748b' }}>
+                              <span>🏛 Institution: {s.institutionName}</span>
+                              <span>🏢 Department: {s.collegeDepartment}</span>
+                            </div>
+                          </div>
+                          <StatusBadge status={s.status} />
+                        </div>
+
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '6px', fontSize: '14px', color: '#475569', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                          <div>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '4px' }}>Problem Description</strong>
+                            <p style={{ margin: 0 }}>{s.problemStatement}</p>
+                            <div style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
+                              <strong>Area Affected:</strong> {s.areaAffected} <br/>
+                              <strong>Severity:</strong> {s.severity}
+                            </div>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '4px' }}>Proposed Solution Details</strong>
+                            <p style={{ margin: 0 }}>{s.solutionDescription}</p>
+                            <div style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
+                              <strong>Team Composition:</strong> {s.teamComposition?.numberOfMembers} members ({s.teamComposition?.details}) <br/>
+                              <strong>Expected Time:</strong> {s.expectedCompletionTime}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {solutions.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '40px', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b' }}>
+                        No proposed solutions available at the moment.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -369,11 +365,11 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                               <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Requested Amount: {c.requestedAmount}</span>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <button style={{ background: '#08743f', border: 'none', padding: '8px 16px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Accept</button>
-                            <button style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Review</button>
-                            <button style={{ background: '#fff', border: '1px solid #fecaca', padding: '8px 16px', borderRadius: '6px', color: '#dc2626', fontWeight: 600, cursor: 'pointer' }}>Decline</button>
-                          </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <button onClick={() => { alert('Collaboration Accepted!'); setCollaborations(collaborations.filter(x => x.id !== c.id)); }} style={{ background: '#08743f', border: 'none', padding: '8px 16px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Accept</button>
+                              <button onClick={() => alert('Review details sent to your email.')} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Review</button>
+                              <button onClick={() => { alert('Collaboration Declined.'); setCollaborations(collaborations.filter(x => x.id !== c.id)); }} style={{ background: '#fff', border: '1px solid #fecaca', padding: '8px 16px', borderRadius: '6px', color: '#dc2626', fontWeight: 600, cursor: 'pointer' }}>Decline</button>
+                            </div>
                         </div>
                       </div>
                     ))}
@@ -446,31 +442,48 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
                 <div className="off-anim-in">
                   <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>Organisation Profile</h2>
                   <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '32px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-                      <div>
-                        <DetailField label="Organisation Name" value={industryUser?.name} />
-                        <br/>
-                        <DetailField label="Organisation Type" value={industryUser?.type} />
-                        <br/>
-                        <DetailField label="Industry Domain" value={industryUser?.domain} />
-                        <br/>
-                        <DetailField label="Location" value={industryUser?.location} />
-                      </div>
-                      <div>
-                        <DetailField label="Contact Person" value={industryUser?.contactPerson} />
-                        <br/>
-                        <DetailField label="Email Address" value={industryUser?.email} />
-                        <br/>
-                        <DetailField label="Phone Number" value={industryUser?.phone} />
-                        <br/>
-                        <DetailField label="Areas of Expertise" value={industryUser?.expertise.join(', ')} />
+                    <h3 style={{ fontSize: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>Organization Details</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                      <DetailField label="Legal Entity Name" value={industryUser?.name} />
+                      <DetailField label="Brand / Trade Name" value={industryUser?.brandName} />
+                      <DetailField label="Organization Type" value={industryUser?.organizationType} />
+                      <DetailField label="Industry Sector" value={industryUser?.industrySector} />
+                      <DetailField label="Primary Business Area" value={industryUser?.primaryBusinessArea} />
+                      <DetailField label="Year Established" value={industryUser?.yearEstablished} />
+                      <DetailField label="Headquarters" value={industryUser?.headquarters} />
+                      <DetailField label="Website" value={industryUser?.website} />
+                      <DetailField label="Location" value={`${industryUser?.district || ''}, ${industryUser?.state || ''}`} />
+                    </div>
+
+                    <h3 style={{ fontSize: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>Registration Information</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                      <DetailField label="CIN" value={industryUser?.cin} />
+                      <DetailField label="LLPIN" value={industryUser?.llpin} />
+                      <DetailField label="GSTIN" value={industryUser?.gstin} />
+                      <DetailField label="Udyam Number" value={industryUser?.udyamNumber} />
+                      <DetailField label="PAN" value={industryUser?.pan} />
+                    </div>
+
+                    <h3 style={{ fontSize: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>Capabilities & Expertise</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                      <DetailField label="Collaboration Capabilities" value={industryUser?.collaborationCapabilities?.join(', ')} />
+                      <DetailField label="Technology / Expertise Areas" value={industryUser?.expertiseAreas} />
+                      <DetailField label="R&D Capability" value={industryUser?.rndCapability} />
+                      <DetailField label="Geographical Areas of Operation" value={industryUser?.geoAreas} />
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <DetailField label="Relevant Projects" value={industryUser?.relevantProjects} />
                       </div>
                     </div>
-                    <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
-                      <DetailField label="Organisation Description" value={industryUser?.description} />
+
+                    <h3 style={{ fontSize: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>Authorized Representative</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+                      <DetailField label="Full Name" value={industryUser?.authRepName} />
+                      <DetailField label="Designation" value={industryUser?.authRepDesignation} />
+                      <DetailField label="Official Email" value={industryUser?.authRepEmail || industryUser?.email} />
+                      <DetailField label="Official Mobile" value={industryUser?.authRepPhone || industryUser?.phone} />
                     </div>
                     <div style={{ marginTop: '32px' }}>
-                      <button style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Edit Profile</button>
+                      <button onClick={() => alert('Profile edit mode enabled (mock)')} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Edit Profile</button>
                     </div>
                   </div>
                 </div>
@@ -480,142 +493,7 @@ export function IndustryDashboard({ Shell, PageHead, user }) {
         </main>
       </div>
 
-      {/* CHALLENGE DETAIL MODAL */}
-      {selectedChallenge && !showInterestForm && (
-        <DetailModal title="Challenge Details" onClose={() => setSelectedChallenge(null)}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-            <div>
-              <h3 style={{ margin: '0 0 8px', fontSize: '22px', color: '#0f172a' }}>{selectedChallenge.title}</h3>
-              <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
-                <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', color: '#475569' }}>ID: {selectedChallenge.id}</span>
-                <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', color: '#475569' }}>{selectedChallenge.domain}</span>
-              </div>
-            </div>
-            <StatusBadge status={selectedChallenge.status} />
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', marginBottom: '24px', border: '1px solid #e2e8f0' }}>
-            <DetailField label="District" value={selectedChallenge.district} />
-            <DetailField label="Severity" value={selectedChallenge.severity} color={selectedChallenge.severity === 'High' ? '#dc2626' : '#d97706'} />
-            <DetailField label="People Affected" value={selectedChallenge.peopleAffected} />
-            <DetailField label="Date Reported" value={selectedChallenge.dateReported} />
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '8px' }}>Problem Description</h4>
-            <p style={{ color: '#334155', lineHeight: '1.6', fontSize: '15px' }}>{selectedChallenge.description}</p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-            <div>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '12px' }}>Evidence</h4>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ width: '80px', height: '60px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>📷 Photo</div>
-                <div style={{ width: '80px', height: '60px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>📄 Doc</div>
-              </div>
-            </div>
-            <div>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '12px' }}>Location</h4>
-              <div style={{ padding: '12px', background: '#f1f5f9', borderRadius: '6px', color: '#475569', fontSize: '14px' }}>
-                📍 {selectedChallenge.district}, Jharkhand
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '24px', marginBottom: '24px' }}>
-            <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '16px' }}>Current Ecosystem</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Government</div>
-                <div style={{ color: '#08743f', fontWeight: 600, marginTop: '4px', fontSize: '14px' }}>✓ Verified</div>
-              </div>
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>University</div>
-                <div style={{ color: '#0f172a', fontWeight: 600, marginTop: '4px', fontSize: '14px' }}>{selectedChallenge.university}</div>
-                <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{selectedChallenge.universityTeam}</div>
-              </div>
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Industry</div>
-                <div style={{ color: '#0284c7', fontWeight: 600, marginTop: '4px', fontSize: '14px' }}>Open for Collaboration</div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '8px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '4px' }}>Collaboration Requirements</div>
-              <div style={{ color: '#15803d', fontSize: '15px' }}>Support Needed: <b>{selectedChallenge.supportRequired.join(', ')}</b></div>
-            </div>
-            <button onClick={() => setShowInterestForm(true)} style={{ background: '#08743f', border: 'none', padding: '12px 24px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '15px' }}>
-              Express Interest →
-            </button>
-          </div>
-        </DetailModal>
-      )}
-
-      {/* EXPRESS INTEREST FORM MODAL */}
-      {showInterestForm && (
-        <DetailModal title="Express Interest for Collaboration" onClose={() => { setShowInterestForm(false); setSelectedChallenge(null); }}>
-          <div style={{ marginBottom: '20px', padding: '16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '13px', color: '#64748b' }}>Applying for Challenge:</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>{selectedChallenge?.title}</div>
-          </div>
-          
-          <form onSubmit={submitInterestForm} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-                Organisation Name
-                <input type="text" defaultValue={industryUser?.name} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-                Contact Person
-                <input type="text" defaultValue={industryUser?.contactPerson} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-              </label>
-            </div>
-            
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-              Area of Expertise
-              <input type="text" defaultValue={industryUser?.expertise.join(', ')} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            </label>
-
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-              Support Type
-              <select required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                <option value="">Select Support Type</option>
-                <option>Technology</option>
-                <option>Mentorship</option>
-                <option>Funding</option>
-                <option>Prototype Development</option>
-                <option>Testing</option>
-                <option>Pilot Deployment</option>
-                <option>Implementation</option>
-                <option>Other</option>
-              </select>
-            </label>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-                Estimated Timeline (Months)
-                <input type="number" min="1" placeholder="e.g. 6" required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-                Funding / Resource Commitment (Optional)
-                <input type="text" placeholder="e.g. Equipment worth ₹2L" style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-              </label>
-            </div>
-
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-              Proposed Contribution / Message
-              <textarea rows="4" required placeholder="Describe how your organisation will help solve this challenge..." style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '4px' }}></textarea>
-            </label>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button type="button" onClick={() => setShowInterestForm(false)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" style={{ background: '#08743f', border: 'none', padding: '10px 24px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Submit Interest</button>
-            </div>
-          </form>
-        </DetailModal>
-      )}
 
       {/* APPLICATION DETAIL MODAL */}
       {selectedApplication && (

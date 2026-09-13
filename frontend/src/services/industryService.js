@@ -25,5 +25,6 @@ export const industryService = {
   getActiveCollaborations: () => fetchWrapper('/collaborations/active'),
   getCSRRequests: () => fetchWrapper('/csr/requests'),
   getIndustryProfile: () => fetchWrapper('/profile'),
-  getNotifications: () => fetchWrapper('/notifications')
+  getNotifications: () => fetchWrapper('/notifications'),
+  getSolutions: () => fetchWrapper('/solutions')
 };

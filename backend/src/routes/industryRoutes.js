@@ -14,5 +14,6 @@ router.get('/collaborations/active', industryController.getActiveCollaborations)
 router.get('/csr/requests', industryController.getCSRRequests);
 router.get('/profile', industryController.getIndustryProfile);
 router.get('/notifications', industryController.getNotifications);
+router.get('/solutions', industryController.getProposedSolutions);
 
 module.exports = router;

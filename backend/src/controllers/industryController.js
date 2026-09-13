@@ -83,12 +83,8 @@ exports.getIndustryProfile = async (req, res) => {
     const ind = await Industry.findById(req.user._id);
     if (!ind) return res.status(404).json({ error: 'Not found' });
     
-    res.json({
-      name: ind.name,
-      sector: ind.industryType || 'Unknown Sector',
-      location: ind.location || 'Unknown Location',
-      focusAreas: ind.focusAreas || []
-    });
+    // Return all fields from the document
+    res.json(ind.toObject ? ind.toObject() : ind);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -96,4 +92,32 @@ exports.getIndustryProfile = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   res.json([]);
+};
+
+const Solution = require('../models/Solution');
+
+exports.getProposedSolutions = async (req, res) => {
+  try {
+    const solutions = await Solution.find()
+      .populate('challenge')
+      .populate('institution');
+      
+    const result = solutions.map(s => ({
+      id: s._id,
+      challengeTitle: s.challenge ? s.challenge.title : 'Unknown',
+      problemStatement: s.challenge ? s.challenge.description : 'Unknown',
+      areaAffected: s.challenge ? `${s.challenge.district}, ${s.challenge.villageCityBlock}` : 'Unknown',
+      severity: s.challenge ? s.challenge.urgencySeverity : 'Unknown',
+      institutionName: s.institution ? s.institution.name : 'Unknown',
+      solutionStatement: s.solutionStatement,
+      solutionDescription: s.solutionDescription,
+      teamComposition: s.teamComposition,
+      collegeDepartment: s.collegeDepartment,
+      expectedCompletionTime: s.expectedCompletionTime,
+      status: s.status
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
