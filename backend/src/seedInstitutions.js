@@ -56,7 +56,8 @@ const seedInstitutions = async () => {
         }
       ];
 
-      for (const instData of institutionsData) {
+      for (let instData of institutionsData) {
+        instData.password = 'password123';
         const inst = await Institution.create(instData);
         
         // Create user account for the institution
@@ -85,19 +86,28 @@ const seedInstitutions = async () => {
           name: 'Tata Steel',
           industryType: 'Manufacturing',
           collaborationStatus: 'Active',
-          associatedProjects: []
+          associatedProjects: [],
+          email: 'admin@tatasteel.com',
+          phone: '9999999991',
+          password: 'password123'
         },
         {
           name: 'Wipro',
           industryType: 'IT Services',
           collaborationStatus: 'Active',
-          associatedProjects: []
+          associatedProjects: [],
+          email: 'admin@wipro.com',
+          phone: '9999999992',
+          password: 'password123'
         },
         {
           name: 'Jindal Steel and Power',
           industryType: 'Manufacturing',
           collaborationStatus: 'Pending',
-          associatedProjects: []
+          associatedProjects: [],
+          email: 'admin@jindalsteel.com',
+          phone: '9999999993',
+          password: 'password123'
         }
       ]);
       console.log('Industries seeded successfully!');

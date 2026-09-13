@@ -69,7 +69,7 @@ function TrackingModal({ onClose }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/public/track/${cleanId}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/public/track/${cleanId}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Tracking ID not found');
       setData(json);
@@ -625,7 +625,7 @@ function SectionTitle({ children, sub }) { return <div className="section-title"
 function Stats() {
   const [stats, setStats] = useState(null);
   useEffect(() => {
-    fetch('http://localhost:5000/api/public/stats')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/public/stats`)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(console.error);
@@ -696,7 +696,7 @@ function SubmitPage() {
 
       const token = localStorage.getItem('token');
 
-      const res = await fetch('http://localhost:5000/api/challenges', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: form
@@ -971,7 +971,7 @@ function FloatingCallAgent() {
     setLoading(true);
     setMessage('');
     try {
-      const res = await fetch('http://localhost:5000/api/sarvam/call', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/sarvam/call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone })
@@ -1056,7 +1056,7 @@ function LoginPage({ onLogin }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: pw })
@@ -1131,7 +1131,7 @@ function RegisterPage() {
         collaborationCapabilities: chips
       };
       
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -1388,7 +1388,7 @@ function BrowseChallengesPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/public/challenges/completed')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/public/challenges/completed`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
@@ -1461,7 +1461,7 @@ function App() {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const res = await fetch('http://localhost:5000/api/auth/profile', {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {

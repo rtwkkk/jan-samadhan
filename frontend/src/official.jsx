@@ -104,13 +104,13 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
         const headers = { 'Authorization': `Bearer ${token}` };
 
         const [kpiRes, queueRes, analyticsRes, allRes, instRes, indRes, verRes] = await Promise.all([
-          fetch('http://localhost:5000/api/admin/kpis', { headers }),
-          fetch('http://localhost:5000/api/admin/queue', { headers }),
-          fetch('http://localhost:5000/api/admin/analytics', { headers }),
-          fetch('http://localhost:5000/api/challenges', { headers }),
-          fetch('http://localhost:5000/api/admin/institutions', { headers }),
-          fetch('http://localhost:5000/api/admin/industries', { headers }),
-          fetch('http://localhost:5000/api/admin/verifications', { headers })
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/kpis`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/queue`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/analytics`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/institutions`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/industries`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/verifications`, { headers })
         ]);
 
         if (kpiRes.ok) setKpis(await kpiRes.json());
@@ -146,7 +146,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
     setDetailModal({ type: 'challenge', data: null, loading: true });
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/challenges/${challengeId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges/${challengeId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -164,7 +164,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
     setDetailModal({ type: 'institution', data: null, loading: true });
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/admin/institutions/${instId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/institutions/${instId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -182,7 +182,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
     setDetailModal({ type: 'industry', data: null, loading: true });
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/admin/industries/${indId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/industries/${indId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -320,7 +320,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
             <div style={{ marginTop: '24px' }}>
               <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: '#0f172a' }}>Supporting Documents</h3>
               {c.supportingDocuments.map((doc, i) => (
-                <a key={i} href={`http://localhost:5000/uploads/${doc}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: '#064477', fontSize: '13px', marginBottom: '4px' }}>📎 {doc}</a>
+                <a key={i} href={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}/uploads/${doc}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: '#064477', fontSize: '13px', marginBottom: '4px' }}>📎 {doc}</a>
               ))}
             </div>
           )}
@@ -465,7 +465,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                
                setDetailModal(prev => ({ ...prev, processing: true }));
                try {
-                 const res = await fetch(`http://localhost:5000/api/admin/verifications/${v._id}`, {
+                 const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/verifications/${v._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                     body: JSON.stringify({ status: 'Rejected', reason })
@@ -491,7 +491,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                
                setDetailModal(prev => ({ ...prev, processing: true }));
                try {
-                 const res = await fetch(`http://localhost:5000/api/admin/verifications/${v._id}`, {
+                 const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/verifications/${v._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                     body: JSON.stringify({ status: 'Approved' })
@@ -709,14 +709,14 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button style={{ width: '100%' }} onClick={() => {
-                      fetch(`http://localhost:5000/api/admin/match/${selectedChallenge.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/match/${selectedChallenge.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
                         .then(r => r.json())
                         .then(data => { setMatches(data); setView('assign'); });
                     }}>Approve & Assign →</button>
                     <button className="outline" style={{ width: '100%', borderColor: '#064477', color: '#064477' }} onClick={() => {
                       const msg = window.prompt("What additional information is required from the citizen?");
                       if (!msg || !msg.trim()) return;
-                      fetch(`http://localhost:5000/api/admin/challenges/${selectedChallenge.id}/status`, {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                         body: JSON.stringify({ status: 'information_requested', message: msg })
@@ -725,7 +725,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                     <button className="outline" style={{ width: '100%', borderColor: '#c4241e', color: '#c4241e' }} onClick={() => {
                       const reason = window.prompt("Please provide a reason for rejecting this challenge:");
                       if (!reason || !reason.trim()) return;
-                      fetch(`http://localhost:5000/api/admin/challenges/${selectedChallenge.id}/status`, {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                         body: JSON.stringify({ status: 'rejected', rejectionReason: reason })
@@ -765,7 +765,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
                       <button onClick={() => {
-                        fetch(`http://localhost:5000/api/admin/challenges/${selectedChallenge.id}/assign`, {
+                        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/assign`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                           body: JSON.stringify({ institutionId: m.id })

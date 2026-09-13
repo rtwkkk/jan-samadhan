@@ -44,7 +44,7 @@ export function UserDashboard({ Shell, PageHead, user = DUMMY_USER }) {
       const token = localStorage.getItem('token');
       if (!token) { setLoading(false); return; }
       try {
-        const res = await fetch('http://localhost:5000/api/challenges/my', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges/my`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -494,7 +494,7 @@ export function UserDashboard({ Shell, PageHead, user = DUMMY_USER }) {
                         const msg = document.getElementById(`respond-${selectedChallenge._id}`).value;
                         if (!msg.trim()) return alert("Please enter a response.");
                         try {
-                          const res = await fetch(`http://localhost:5000/api/challenges/${selectedChallenge._id}/respond`, {
+                          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges/${selectedChallenge._id}/respond`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                             body: JSON.stringify({ message: msg })
@@ -536,7 +536,7 @@ export function UserDashboard({ Shell, PageHead, user = DUMMY_USER }) {
                     onClick={async () => {
                       if(!window.confirm("Mark this challenge as In Progress?")) return;
                       try {
-                        const res = await fetch(`http://localhost:5000/api/admin/challenges/${selectedChallenge._id}/status`, {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge._id}/status`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                           body: JSON.stringify({ status: 'in_progress' })
@@ -553,7 +553,7 @@ export function UserDashboard({ Shell, PageHead, user = DUMMY_USER }) {
                     onClick={async () => {
                       if(!window.confirm("Mark this challenge as Resolved?")) return;
                       try {
-                        const res = await fetch(`http://localhost:5000/api/admin/challenges/${selectedChallenge._id}/status`, {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge._id}/status`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                           body: JSON.stringify({ status: 'resolved' })
@@ -585,7 +585,7 @@ export function ProjectDetails({ Shell, PageHead }) {
     const fetchProject = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`http://localhost:5000/api/challenges/${id}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges/${id}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (res.ok) {
@@ -742,7 +742,7 @@ export function UserProfile({ Shell, PageHead, user, setUserData }) {
       const token = localStorage.getItem('token');
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:5000/api/challenges/my', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/challenges/my`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -768,7 +768,7 @@ export function UserProfile({ Shell, PageHead, user, setUserData }) {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

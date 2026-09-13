@@ -6,7 +6,8 @@ const getAuthHeaders = () => {
   };
 };
 
-const BASE_URL = 'http://localhost:5000/api/university';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL = `${API_URL}/university`;
 
 const fetchWrapper = async (endpoint, options = {}) => {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
