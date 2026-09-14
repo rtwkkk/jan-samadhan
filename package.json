@@ -3,7 +3,17 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": { "start": "cd backend && npm start", "dev": "vite", "build": "vite build", "preview": "vite preview" },
-  "dependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "react": "latest", "react-dom": "latest" },
-  "devDependencies": {}
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "ngrok": "^5.0.0-beta.2",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  }
 }

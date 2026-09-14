@@ -422,8 +422,8 @@ const updateVerificationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Organization not found' });
     }
 
+    await org.constructor.updateOne({ _id: org._id }, { $set: { verificationStatus: status } });
     org.verificationStatus = status;
-    await org.save();
 
     res.json({ success: true, message: `Account ${status.toLowerCase()} successfully`, user: org });
   } catch (error) {

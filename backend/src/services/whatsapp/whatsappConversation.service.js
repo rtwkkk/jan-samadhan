@@ -96,7 +96,7 @@ async function callGeminiAI(messages, isJson = false) {
   }
 
   try {
-    const response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    const response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
       system_instruction: systemInstruction,
       contents,
       generationConfig
@@ -104,7 +104,7 @@ async function callGeminiAI(messages, isJson = false) {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 15000
+      timeout: 60000
     });
 
     return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
@@ -465,7 +465,7 @@ async function handleIncomingMessage(phone, messageText, waMessageId, baseUrl) {
 
     // ── Mark as read on WhatsApp ──
     if (waMessageId) {
-      whatsappService.markAsRead(waMessageId).catch(() => {});
+      whatsappService.markAsRead(waMessageId).catch(() => { });
     }
 
     // ── Build conversation history for AI ──
@@ -646,7 +646,7 @@ async function handleIncomingMedia(phone, mediaInfo, waMessageId) {
         if (!session.draft.evidence) session.draft.evidence = [];
         session.draft.evidence.push(`/uploads/${filename}`);
 
-        const { messageId } = await whatsappService.sendTextMessage(phone, 
+        const { messageId } = await whatsappService.sendTextMessage(phone,
           `✅ ${mediaInfo.type === 'image' ? 'Photo' : mediaInfo.type === 'video' ? 'Video' : 'Document'} mil gaya. Evidence ke roop mein complaint mein add ho jayega.\n\nAur kuch bhejein ya baat jaari rakhein.`
         );
 
@@ -692,7 +692,7 @@ async function initializeVoiceCallHandoff(phone, callDetails) {
     resetSession(phone);
     const session = getSession(phone);
     session.state = 'REGISTERING';
-    
+
     // Inject memory from the voice call
     session.draft = {
       citizenName: callDetails.userName || '',

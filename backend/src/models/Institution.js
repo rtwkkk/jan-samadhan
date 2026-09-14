@@ -5,6 +5,15 @@ const institutionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide institution name']
   },
+  email: {
+    type: String,
+    required: [true, 'Please provide email address'],
+    unique: true
+  },
+  phone: {
+    type: String,
+    required: [true, 'Please provide phone number']
+  },
   type: {
     type: String,
     enum: ['University', 'Engineering College', 'Medical College', 'Agricultural University / College', 'Polytechnic', 'Research Institute', 'Other Higher Education Institution'],

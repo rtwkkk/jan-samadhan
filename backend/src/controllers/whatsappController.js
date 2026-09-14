@@ -60,8 +60,7 @@ const handleWebhook = async (req, res) => {
       }
     }
 
-    // Immediately respond 200 to Meta — they retry on non-200
-    res.sendStatus(200);
+    // Meta expects a 200 OK within 20 seconds. We'll send it at the end to ensure async tasks complete.
 
     const body = req.body;
     const baseUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
@@ -69,7 +68,7 @@ const handleWebhook = async (req, res) => {
     // Validate it's a WhatsApp webhook
     if (body?.object !== 'whatsapp_business_account') {
       console.warn('[WhatsApp Webhook] Non-WhatsApp event received:', body?.object);
-      return;
+      return res.sendStatus(404);
     }
 
     console.log('[WhatsApp Webhook] Received event:', JSON.stringify(body, null, 2));
@@ -211,9 +210,15 @@ const handleWebhook = async (req, res) => {
         }
       }
     }
+
+    // Send 200 OK after processing
+    res.sendStatus(200);
   } catch (err) {
     // Never crash the webhook handler — Meta will keep retrying
     console.error('[WhatsApp Webhook] Unhandled error:', err);
+    if (!res.headersSent) {
+      res.sendStatus(500);
+    }
   }
 };
 

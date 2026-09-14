@@ -69,7 +69,7 @@ exports.triggerCall = async (req, res) => {
           user_phone_number: formattedPhone
         },
         webhook_config: {
-          url: "https://your-public-url.com/api/sarvam/webhook", // User needs to update this with their tunnel URL
+          url: `${process.env.WEBHOOK_BASE_URL || 'https://jkr.loca.lt'}/api/sarvam/webhook`,
           metadata: {
             lead_id: leadId
           }

@@ -6,7 +6,7 @@ const Challenge = require('../models/Challenge');
 
 exports.getUniversityStats = async (req, res) => {
   try {
-    const assignedChallenges = await Project.countDocuments({ institutionId: req.user._id, status: 'Active' });
+    const assignedChallenges = await Challenge.countDocuments({});
     const activeProjects = await Project.countDocuments({ institutionId: req.user._id, status: 'Active' });
     const pendingProposals = await Project.countDocuments({ institutionId: req.user._id, status: 'Under Government Review' });
     const studentTeams = await StudentTeam.countDocuments({ institutionId: req.user._id });
@@ -28,19 +28,26 @@ exports.getUniversityStats = async (req, res) => {
 
 exports.getAssignedChallenges = async (req, res) => {
   try {
-    const projects = await Project.find({ institutionId: req.user._id }).populate('challengeId');
-    const result = projects.map(p => ({
-      id: p.challengeId ? p.challengeId._id : p._id,
-      title: p.title,
-      domain: p.challengeId ? p.challengeId.domain : 'Unknown',
-      district: p.challengeId ? p.challengeId.district : 'Unknown',
-      severity: p.challengeId ? p.challengeId.urgencySeverity : 'Medium',
-      peopleAffected: p.challengeId ? p.challengeId.impactEstimate : 'Unknown',
-      currentStage: p.status,
+    const challenges = await Challenge.find({});
+    const result = challenges.map(c => ({
+      id: c._id,
+      title: c.title,
+      domain: c.department || 'Unknown',
+      district: c.district || 'Unknown',
+      severity: c.urgencySeverity || 'Medium',
+      peopleAffected: c.peopleAffected || 'Unknown',
+      currentStage: c.status === 'assigned' ? 'Awaiting University Review' : c.status,
       assignedBy: 'Govt. Official',
-      description: p.challengeId ? p.challengeId.description : '',
-      block: p.challengeId ? p.challengeId.block : '',
-      village: p.challengeId ? p.challengeId.village : ''
+      description: c.description || '',
+      block: c.villageCityBlock || '',
+      village: c.villageCityBlock || '',
+      dateReported: c.createdAt ? c.createdAt.toISOString().split('T')[0] : 'Unknown',
+      evidence: {
+        photo: c.supportingDocuments && c.supportingDocuments.some(doc => doc.match(/\.(jpeg|jpg|gif|png)$/) != null),
+        video: c.supportingDocuments && c.supportingDocuments.some(doc => doc.match(/\.(mp4|mkv|avi)$/) != null),
+        doc: c.supportingDocuments && c.supportingDocuments.some(doc => doc.match(/\.(pdf|doc|docx)$/) != null)
+      },
+      validation: ['Verified by Admin', 'Routed to Institution']
     }));
     res.json(result);
   } catch (err) {
@@ -219,8 +226,15 @@ exports.getUniversityProfile = async (req, res) => {
       type: inst.type,
       location: inst.district,
       contact: inst.emailDomain,
-      departments: inst.departments,
-      researchAreas: inst.researchDomains,
+      email: inst.email || 'N/A',
+      phone: inst.phone || 'N/A',
+      aisheCode: inst.aisheCode || 'N/A',
+      verificationStatus: inst.verificationStatus || 'Pending',
+      joinedDate: inst.createdAt ? inst.createdAt.toISOString().split('T')[0] : 'N/A',
+      departments: inst.departments && inst.departments.length > 0 ? inst.departments : ['General'],
+      researchAreas: inst.researchDomains && inst.researchDomains.length > 0 ? inst.researchDomains : ['Various'],
+      facilities: inst.facilities || 0,
+      similarProjectsCompleted: inst.similarProjectsCompleted || 0,
       innovationCentre: 'Yes',
       incubationCentre: 'Yes'
     });
