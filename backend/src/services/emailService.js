@@ -26,6 +26,7 @@ const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
  */
 function createBase64Email(to, subject, htmlBody) {
   const emailLines = [
+    `From: "Jan Samadhan" <${process.env.EMAIL_USER}>`,
     `To: ${to}`,
     `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
     `Content-Type: text/html; charset=utf-8`,
