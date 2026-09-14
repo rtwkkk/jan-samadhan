@@ -2,6 +2,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const VoiceCall = require('../models/VoiceCall');
 const whatsappConversationService = require('../services/whatsapp/whatsappConversation.service');
+const { sendEvidenceRequestEmail } = require('../services/emailService');
 
 exports.triggerCall = async (req, res) => {
   try {
@@ -130,6 +131,11 @@ exports.webhookHandler = async (req, res) => {
         userEmail: updatedCall.userEmail,
         callSummary: summary
       });
+
+      // Send evidence request email (non-blocking)
+      if (updatedCall.userEmail) {
+        sendEvidenceRequestEmail(updatedCall.userEmail, updatedCall.userName, updatedCall.sarvamLeadId);
+      }
     }
 
     res.status(200).send('Webhook processed');

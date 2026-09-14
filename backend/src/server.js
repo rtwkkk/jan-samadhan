@@ -43,6 +43,7 @@ app.use('/api/university', require('./routes/universityRoutes'));
 app.use('/api/industry', require('./routes/industryRoutes'));
 app.use('/api/whatsapp', require('./routes/whatsappRoutes'));
 app.use('/api/sarvam', require('./routes/sarvamRoutes'));
+app.use('/api/evidence', require('./routes/evidenceRoutes'));
 
 // Static folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

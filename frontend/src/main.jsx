@@ -6,6 +6,7 @@ import { UserDashboard, ProjectDetails, UserProfile } from './user.jsx';
 import { OfficialDashboard } from './official.jsx';
 import { IndustryDashboard } from './industry.jsx';
 import { UniversityDashboard } from './university.jsx';
+import { EvidenceUpload } from './EvidenceUpload.jsx';
 
 // Dummy credentials removed
 const CATEGORIES = ['Education', 'Agriculture', 'Healthcare', 'Water Resources', 'Environment', 'Urban Development', 'Accessibility', 'Rural Livelihoods'];
@@ -1514,6 +1515,12 @@ function App() {
     return null;
   }
   if (path === '/register') return <RegisterPage />;
+
+  // Public evidence upload page (from email link)
+  if (path.startsWith('/upload-evidence/')) {
+    const leadId = path.replace('/upload-evidence/', '');
+    return <EvidenceUpload leadId={leadId} />;
+  }
 
   let Page = HomePage;
   if (path === '/submit-a-challenge') Page = SubmitPage;

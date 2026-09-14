@@ -1,5 +1,6 @@
 const Challenge = require('../models/Challenge');
 const aiService = require('../services/aiService');
+const { sendChallengeConfirmation } = require('../services/emailService');
 
 // @desc    Submit a new challenge
 // @route   POST /api/challenges
@@ -96,6 +97,9 @@ exports.submitChallenge = async (req, res) => {
       status: 'submitted',
       user: req.user ? req.user._id : undefined // If auth middleware attached user
     });
+
+    // Send confirmation email (non-blocking)
+    sendChallengeConfirmation(email, fullName, challenge._id.toString(), title);
 
     res.status(201).json({
       success: true,
