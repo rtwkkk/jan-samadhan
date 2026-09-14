@@ -1,36 +1,51 @@
-const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 
 /**
- * Jan Samadhan Email Service
- * Handles all transactional email notifications using Nodemailer.
+ * Jan Samadhan Email Service (Gmail REST API)
+ * Bypasses Render's SMTP Port 465 firewall by sending emails over HTTPS
+ * using the official Gmail REST API and Google OAuth2 credentials.
  */
 
-// ── SMTP Transporter (Gmail with App Password) ──
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // use SSL
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    // do not fail on invalid certs and force TLS
-    rejectUnauthorized: false
-  }
+// 1. Initialize the OAuth2 client
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground"
+);
+
+// 2. Set the Refresh Token
+oAuth2Client.setCredentials({
+  refresh_token: process.env.REFRESH_TOKEN
 });
 
-// Verify connection on startup (non-blocking)
-transporter.verify().then(() => {
-  console.log('[EmailService] SMTP transporter is ready to send emails.');
-}).catch((err) => {
-  console.warn('[EmailService] SMTP transporter verification failed:', err.message);
-  console.warn('[EmailService] Emails will NOT be sent until EMAIL_USER and EMAIL_PASS are correctly configured in .env');
-});
+// 3. Initialize the Gmail API Client
+const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
 
 /**
- * Sends a professional challenge registration confirmation email.
- * Triggered when a citizen submits a challenge via the web form.
+ * Helper to encode email into Base64URL format required by Gmail API
+ */
+function createBase64Email(to, subject, htmlBody) {
+  const emailLines = [
+    `To: ${to}`,
+    `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    `Content-Type: text/html; charset=utf-8`,
+    `MIME-Version: 1.0`,
+    '',
+    htmlBody
+  ];
+  
+  const rawEmail = emailLines.join('\n');
+  
+  // Base64URL encode (replace + with -, / with _, remove trailing =)
+  return Buffer.from(rawEmail)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+/**
+ * Sends a professional challenge registration confirmation email via Gmail REST API
  *
  * @param {string} recipientEmail - Citizen's email address
  * @param {string} recipientName - Citizen's full name
@@ -120,22 +135,25 @@ async function sendChallengeConfirmation(recipientEmail, recipientName, challeng
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"Jan Samadhan" <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
-      subject: `Challenge Registered — Tracking ID: ${trackingId}`,
-      html: htmlBody
+    const raw = createBase64Email(
+      recipientEmail, 
+      `Challenge Registered — Tracking ID: ${trackingId}`, 
+      htmlBody
+    );
+
+    const res = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw }
     });
-    console.log(`[EmailService] Confirmation email sent to ${recipientEmail} for challenge ${challengeId}`);
+
+    console.log(`[EmailService] Confirmation email sent to ${recipientEmail} for challenge ${challengeId} (Gmail ID: ${res.data.id})`);
   } catch (error) {
     console.error(`[EmailService] Failed to send confirmation email to ${recipientEmail}:`, error.message);
-    // Non-blocking: do not throw, challenge submission should still succeed
   }
 }
 
 /**
- * Sends a professional email requesting evidence and location after a voice call.
- * Contains a link to the frontend evidence upload page that uses the Geolocation API.
+ * Sends a professional email requesting evidence and location after a voice call via Gmail REST API
  *
  * @param {string} recipientEmail - Citizen's email address
  * @param {string} recipientName - Citizen's name
@@ -219,16 +237,20 @@ async function sendEvidenceRequestEmail(recipientEmail, recipientName, leadId) {
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"Jan Samadhan" <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
-      subject: 'Action Required: Submit Evidence & Location — Jan Samadhan',
-      html: htmlBody
+    const raw = createBase64Email(
+      recipientEmail, 
+      'Action Required: Submit Evidence & Location — Jan Samadhan', 
+      htmlBody
+    );
+
+    const res = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw }
     });
-    console.log(`[EmailService] Evidence request email sent to ${recipientEmail} for lead ${leadId}`);
+
+    console.log(`[EmailService] Evidence request email sent to ${recipientEmail} for lead ${leadId} (Gmail ID: ${res.data.id})`);
   } catch (error) {
     console.error(`[EmailService] Failed to send evidence request email to ${recipientEmail}:`, error.message);
-    // Non-blocking
   }
 }
 
