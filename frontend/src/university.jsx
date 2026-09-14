@@ -581,26 +581,48 @@ export function UniversityDashboard({ Shell }) {
               {/* PROFILE VIEW */}
               {view === 'profile' && (
                 <div className="off-anim-in">
-                  <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>University Profile</h2>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div>
+                      <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>University Profile</h2>
+                      <p style={{ color: '#64748b', margin: 0 }}>Manage your institutional details and capabilities.</p>
+                    </div>
+                    {profile?.verificationStatus === 'Approved' ? (
+                      <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '4px', fontWeight: 600, fontSize: '13px' }}>✓ Account Verified</span>
+                    ) : (
+                      <span style={{ background: '#fef3c7', color: '#b45309', padding: '6px 12px', borderRadius: '4px', fontWeight: 600, fontSize: '13px' }}>⌛ Verification Pending</span>
+                    )}
+                  </div>
+                  
                   <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '32px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                    <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Institutional Information</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '32px' }}>
                       <div>
-                        <DetailField label="University Name" value={profile?.name} />
-                        <br/>
-                        <DetailField label="University Type" value={profile?.type} />
-                        <br/>
-                        <DetailField label="Location" value={profile?.location} />
-                        <br/>
-                        <DetailField label="Contact Information" value={profile?.contact} />
+                        <DetailField label="Institution Name" value={profile?.name} />
+                        <DetailField label="Institution Type" value={profile?.type} />
+                        <DetailField label="AISHE Code" value={profile?.aisheCode} />
+                        <DetailField label="Location (District)" value={profile?.location} />
                       </div>
                       <div>
-                        <DetailField label="Departments" value={profile?.departments.join(', ')} />
-                        <br/>
-                        <DetailField label="Research Areas" value={profile?.researchAreas.join(', ')} />
-                        <br/>
-                        <DetailField label="Innovation Centre" value={profile?.innovationCentre} />
-                        <br/>
-                        <DetailField label="Incubation Centre" value={profile?.incubationCentre} />
+                        <DetailField label="Nodal Officer Email" value={profile?.email} />
+                        <DetailField label="Nodal Officer Phone" value={profile?.phone} />
+                        <DetailField label="Official Email Domain" value={profile?.contact} />
+                        <DetailField label="Joined Date" value={profile?.joinedDate} />
+                      </div>
+                    </div>
+
+                    <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Capabilities & Resources</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                      <div>
+                        <DetailField label="Departments" value={profile?.departments?.join(', ')} />
+                        <DetailField label="Research Areas" value={profile?.researchAreas?.join(', ')} />
+                      </div>
+                      <div>
+                        <DetailField label="Facilities Count" value={profile?.facilities} />
+                        <DetailField label="Similar Projects Completed" value={profile?.similarProjectsCompleted} />
+                        <div style={{ display: 'flex', gap: '24px', marginTop: '16px' }}>
+                          <DetailField label="Innovation Centre" value={profile?.innovationCentre} color="#08743f" />
+                          <DetailField label="Incubation Centre" value={profile?.incubationCentre} color="#08743f" />
+                        </div>
                       </div>
                     </div>
                   </div>

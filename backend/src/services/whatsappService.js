@@ -7,7 +7,7 @@
  */
 const axios = require('axios');
 
-const META_API_BASE = `https://graph.facebook.com/${process.env.META_API_VERSION || 'v21.0'}`;
+const META_API_BASE = `https://graph.facebook.com/${process.env.META_API_VERSION || 'v20.0'}`;
 
 /**
  * Get configured WhatsApp credentials from environment.
