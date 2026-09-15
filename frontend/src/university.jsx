@@ -81,7 +81,7 @@ const DetailField = ({ label, value, color = '#0f172a' }) => (
 export function UniversityDashboard({ Shell }) {
   const [view, setView] = useState('dashboard');
   const [loading, setLoading] = useState(true);
-  
+
   // Data States
   const [stats, setStats] = useState(null);
   const [challenges, setChallenges] = useState([]);
@@ -140,10 +140,27 @@ export function UniversityDashboard({ Shell }) {
 
   const handleAcceptChallenge = () => {
     if (selectedChallenge) {
-      alert("Challenge Accepted! You can now form a team and start a project.");
-      setShowReviewForm(false);
-      setSelectedChallenge(null);
-      // Dummy logic: would update state in real app
+      universityService.acceptChallenge(selectedChallenge.id).then(() => {
+        alert("Challenge Accepted! It has been moved to My Projects.");
+        setShowReviewForm(false);
+        setSelectedChallenge(null);
+        window.location.reload();
+      }).catch(err => {
+        alert("Failed to accept challenge: " + err.message);
+      });
+    }
+  };
+
+  const handleDeclineChallenge = () => {
+    if (selectedChallenge) {
+      universityService.declineChallenge(selectedChallenge.id).then(() => {
+        alert("Challenge Declined!");
+        setShowReviewForm(false);
+        setSelectedChallenge(null);
+        window.location.reload();
+      }).catch(err => {
+        alert("Failed to decline challenge: " + err.message);
+      });
     }
   };
 
@@ -175,7 +192,7 @@ export function UniversityDashboard({ Shell }) {
       setTeams([...teams, newTeam]);
       alert("Team Formed Successfully!");
     }
-    
+
     setShowTeamForm(false);
     setSelectedTeam(null);
   };
@@ -272,7 +289,7 @@ export function UniversityDashboard({ Shell }) {
                 <div className="off-anim-in">
                   <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>Assigned Challenges</h2>
                   <p style={{ color: '#64748b', marginBottom: '24px' }}>Verified challenges available for university evaluation.</p>
-                  
+
                   <div style={{ display: 'grid', gap: '20px' }}>
                     {challenges.map(c => (
                       <div key={c.id} style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -296,6 +313,8 @@ export function UniversityDashboard({ Shell }) {
                           <button onClick={() => setSelectedChallenge(c)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>View Challenge</button>
                           {c.currentStage === 'Awaiting University Review' ? (
                             <button onClick={() => { setSelectedChallenge(c); setShowReviewForm(true); }} style={{ background: '#08743f', border: 'none', padding: '10px 20px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Review</button>
+                          ) : c.currentStage === 'rejected' ? (
+                            <button disabled style={{ background: '#e2e8f0', border: 'none', padding: '10px 20px', borderRadius: '6px', color: '#64748b', fontWeight: 600, cursor: 'not-allowed' }}>Declined</button>
                           ) : (
                             <button onClick={() => { setSelectedChallenge(c); setShowProjectForm(true); }} style={{ background: '#0f172a', border: 'none', padding: '10px 20px', borderRadius: '6px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Start Project</button>
                           )}
@@ -344,7 +363,11 @@ export function UniversityDashboard({ Shell }) {
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px' }}>
-                          <button onClick={() => location.hash = `#/project/${p.id}`} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>View Details</button>
+                          {p.facultyMentor === 'Unassigned' ? (
+                            <button onClick={() => { setSelectedChallenge({ id: p.challengeId, title: p.title, domain: p.domain }); setShowProjectForm(true); }} style={{ background: '#0f172a', border: 'none', padding: '8px 16px', borderRadius: '4px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Start Project</button>
+                          ) : (
+                            <button onClick={() => location.hash = `#/project/${p.id}`} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>View Details</button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -399,13 +422,13 @@ export function UniversityDashboard({ Shell }) {
                           <StatusBadge status={t.status} />
                         </div>
                         <div style={{ fontSize: '13px', color: '#475569', marginBottom: '16px' }}>Project: <b>{t.project}</b></div>
-                        
+
                         <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', marginBottom: '16px' }}>
                           <DetailField label="Faculty Mentor" value={t.facultyMentor} />
                           <DetailField label="Departments" value={t.departments.join(' + ')} />
                           <DetailField label="Skills" value={t.skills.join(', ')} />
                         </div>
-                        
+
                         <div>
                           <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#64748b', marginBottom: '8px' }}>Students ({t.students.length})</h4>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -517,7 +540,7 @@ export function UniversityDashboard({ Shell }) {
                       <span style={{ color: '#64748b', fontSize: '14px', fontWeight: 600, textTransform: 'uppercase' }}>Publications</span>
                     </div>
                   </div>
-                  
+
                   <h3 style={{ fontSize: '18px', color: '#0f172a', marginBottom: '16px' }}>Innovation Highlights</h3>
                   <div style={{ display: 'grid', gap: '16px' }}>
                     {research?.highlights.map((h, idx) => (
@@ -592,7 +615,7 @@ export function UniversityDashboard({ Shell }) {
                       <span style={{ background: '#fef3c7', color: '#b45309', padding: '6px 12px', borderRadius: '4px', fontWeight: 600, fontSize: '13px' }}>⌛ Verification Pending</span>
                     )}
                   </div>
-                  
+
                   <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '32px' }}>
                     <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Institutional Information</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '32px' }}>
@@ -692,7 +715,7 @@ export function UniversityDashboard({ Shell }) {
               <button onClick={() => setShowReviewForm(true)} style={{ background: '#08743f', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Review Challenge</button>
             </div>
           ) : (
-             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
               <button onClick={() => setSelectedChallenge(null)} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer' }}>Close</button>
               <button onClick={() => setShowProjectForm(true)} style={{ background: '#0f172a', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Start Project</button>
             </div>
@@ -704,7 +727,7 @@ export function UniversityDashboard({ Shell }) {
       {showReviewForm && selectedChallenge && (
         <DetailModal title={`Review Challenge: ${selectedChallenge.id}`} onClose={() => { setShowReviewForm(false); setSelectedChallenge(null); }}>
           <p style={{ color: '#475569', marginBottom: '24px' }}>Evaluate this challenge to see if it aligns with your university's expertise and resources.</p>
-          
+
           <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #e2e8f0' }}>
             <h4 style={{ margin: '0 0 8px', fontSize: '16px' }}>{selectedChallenge.title}</h4>
             <span style={{ fontSize: '13px', color: '#64748b' }}>Domain: {selectedChallenge.domain} | Severity: {selectedChallenge.severity}</span>
@@ -718,7 +741,7 @@ export function UniversityDashboard({ Shell }) {
           </label>
 
           <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
-            <button onClick={() => { setShowReviewForm(false); setSelectedChallenge(null); }} style={{ flex: 1, padding: '12px', background: '#fff', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Decline Challenge</button>
+            <button onClick={handleDeclineChallenge} style={{ flex: 1, padding: '12px', background: '#fff', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Decline Challenge</button>
             <button onClick={handleAcceptChallenge} style={{ flex: 1, padding: '12px', background: '#08743f', border: 'none', color: '#fff', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Accept Challenge</button>
           </div>
         </DetailModal>
@@ -733,7 +756,7 @@ export function UniversityDashboard({ Shell }) {
                 <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>Project Title</span>
                 <input required type="text" defaultValue={selectedChallenge ? selectedChallenge.title : ''} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
               </label>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label>
                   <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>Faculty Mentor</span>

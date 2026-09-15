@@ -1,5 +1,5 @@
 const allowedTransitions = {
-  submitted: ['under_review', 'rejected', 'information_requested'],
+  submitted: ['under_review', 'verified', 'rejected', 'information_requested'],
   under_review: ['verified', 'rejected', 'information_requested'],
   information_requested: ['under_review', 'rejected'],
   verified: ['assigned', 'rejected'],

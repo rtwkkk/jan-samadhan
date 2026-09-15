@@ -709,14 +709,24 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button style={{ width: '100%' }} onClick={() => {
-                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/match/${selectedChallenge.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
-                        .then(r => r.json())
-                        .then(data => { setMatches(data); setView('assign'); });
+                      const id = selectedChallenge.id || selectedChallenge._id;
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${id}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                        body: JSON.stringify({ status: 'verified' })
+                      })
+                      .then(res => {
+                        if (!res.ok) throw new Error('Verification failed');
+                        return fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/match/${id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                      })
+                      .then(r => r.json())
+                      .then(data => { setMatches(data); setView('assign'); })
+                      .catch(err => alert(err.message));
                     }}>Approve & Assign →</button>
                     <button className="outline" style={{ width: '100%', borderColor: '#064477', color: '#064477' }} onClick={() => {
                       const msg = window.prompt("What additional information is required from the citizen?");
                       if (!msg || !msg.trim()) return;
-                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/status`, {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id || selectedChallenge._id}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                         body: JSON.stringify({ status: 'information_requested', message: msg })
@@ -725,7 +735,7 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                     <button className="outline" style={{ width: '100%', borderColor: '#c4241e', color: '#c4241e' }} onClick={() => {
                       const reason = window.prompt("Please provide a reason for rejecting this challenge:");
                       if (!reason || !reason.trim()) return;
-                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/status`, {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id || selectedChallenge._id}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                         body: JSON.stringify({ status: 'rejected', rejectionReason: reason })
@@ -765,11 +775,14 @@ export function OfficialDashboard({ Shell, PageHead, user }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
                       <button onClick={() => {
-                        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id}/assign`, {
+                        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/challenges/${selectedChallenge.id || selectedChallenge._id}/assign`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                           body: JSON.stringify({ institutionId: m.id })
-                        }).then(() => setView('confirm'));
+                        }).then(res => {
+                          if (res.ok) setView('confirm');
+                          else res.json().then(d => alert(d.message || 'Failed to assign challenge'));
+                        });
                       }}>Select Institution →</button>
                     </div>
                   </div>
