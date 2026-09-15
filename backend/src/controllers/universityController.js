@@ -28,7 +28,7 @@ exports.getUniversityStats = async (req, res) => {
 
 exports.getAssignedChallenges = async (req, res) => {
   try {
-    const challenges = await Challenge.find({});
+    const challenges = await Challenge.find({ status: { $nin: ['in_progress', 'resolved'] } });
     const result = challenges.map(c => ({
       id: c._id,
       title: c.title,
@@ -55,6 +55,64 @@ exports.getAssignedChallenges = async (req, res) => {
   }
 };
 
+exports.acceptChallenge = async (req, res) => {
+  try {
+    const challenge = await Challenge.findById(req.params.id);
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+    challenge.status = 'in_progress';
+    challenge.statusHistory.push({
+      from: challenge.status,
+      to: 'in_progress',
+      changedBy: req.user._id,
+      changedByRole: req.user.role,
+      reason: 'Institution accepted the challenge',
+      changedAt: new Date()
+    });
+    await challenge.save();
+
+    const project = new Project({
+      title: challenge.title,
+      challengeId: challenge._id,
+      institutionId: req.user._id,
+      status: 'Active',
+      facultyMentor: 'Unassigned',
+      progress: 0,
+      nextMilestone: 'Initial Assessment',
+      lifecycle: [{ name: 'Challenge Accepted', completed: true }]
+    });
+    await project.save();
+
+    res.json({ success: true, project });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.declineChallenge = async (req, res) => {
+  try {
+    const challenge = await Challenge.findById(req.params.id);
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+    challenge.status = 'rejected';
+    challenge.statusHistory.push({
+      from: challenge.status,
+      to: 'rejected',
+      changedBy: req.user._id,
+      changedByRole: req.user.role,
+      reason: 'Institution declined the challenge',
+      changedAt: new Date()
+    });
+    await challenge.save();
+
+    res.json({ success: true, challenge });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getActiveProjects = async (req, res) => {
   try {
     const projects = await Project.find({ institutionId: req.user._id, status: 'Active' }).populate('challengeId');
@@ -62,6 +120,7 @@ exports.getActiveProjects = async (req, res) => {
       id: p._id,
       challengeId: p.challengeId ? p.challengeId._id : '',
       title: p.title,
+      domain: p.challengeId ? (p.challengeId.category || p.challengeId.department || 'Unknown') : 'Unknown',
       facultyMentor: p.facultyMentor,
       district: p.challengeId ? p.challengeId.district : 'Unknown',
       status: p.status,
@@ -115,7 +174,7 @@ exports.createStudentTeam = async (req, res) => {
   try {
     const { name, project, facultyMentor, students, departments, skills, status } = req.body;
     let projectId = null;
-    
+
     // Find project by title if provided (basic linking)
     if (project && project !== 'Unassigned') {
       const p = await Project.findOne({ title: project, institutionId: req.user._id });
@@ -132,7 +191,7 @@ exports.createStudentTeam = async (req, res) => {
       skills,
       status: status || 'Active'
     });
-    
+
     await team.save();
     res.status(201).json(team);
   } catch (err) {
@@ -165,7 +224,7 @@ exports.deleteStudentTeam = async (req, res) => {
 exports.getIndustryCollaborations = async (req, res) => {
   try {
     const collabs = await IndustryCollaboration.find({ institutionId: req.user._id }).populate('industryId').populate('projectId');
-    
+
     const requests = collabs.filter(c => c.status === 'Pending').map(c => ({
       id: c._id,
       industry: c.industryId ? c.industryId.name : 'Unknown',
@@ -190,7 +249,7 @@ exports.getResearchInnovation = async (req, res) => {
   try {
     const inst = await Institution.findById(req.user._id);
     if (!inst) return res.status(404).json({ error: 'Not found' });
-    
+
     res.json({
       activeResearch: inst.researchInnovation?.activeResearch || 0,
       prototypes: inst.researchInnovation?.prototypes || 0,
@@ -207,7 +266,7 @@ exports.getImpactMetrics = async (req, res) => {
   try {
     const inst = await Institution.findById(req.user._id);
     if (!inst) return res.status(404).json({ error: 'Not found' });
-    
+
     res.json(inst.impactMetrics || {
       peopleBenefited: '0', villagesCovered: 0, districtsImpacted: 0, solutionsDeployed: 0
     });
@@ -220,7 +279,7 @@ exports.getUniversityProfile = async (req, res) => {
   try {
     const inst = await Institution.findById(req.user._id);
     if (!inst) return res.status(404).json({ error: 'Not found' });
-    
+
     res.json({
       name: inst.name,
       type: inst.type,
@@ -253,7 +312,7 @@ exports.getMilestones = async (req, res) => {
           id: p._id,
           project: p.title,
           title: p.nextMilestone,
-          dueDate: p.submittedOn ? new Date(p.submittedOn.getTime() + 30*24*60*60*1000).toISOString().split('T')[0] : 'TBD', // roughly +1 month from submittedOn
+          dueDate: p.submittedOn ? new Date(p.submittedOn.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 'TBD', // roughly +1 month from submittedOn
           status: 'Pending'
         });
       }

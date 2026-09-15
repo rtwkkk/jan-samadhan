@@ -23,6 +23,8 @@ const fetchWrapper = async (endpoint, options = {}) => {
 export const universityService = {
   getUniversityStats: () => fetchWrapper('/stats'),
   getAssignedChallenges: () => fetchWrapper('/challenges/assigned'),
+  acceptChallenge: (id) => fetchWrapper(`/challenges/${id}/accept`, { method: 'POST' }),
+  declineChallenge: (id) => fetchWrapper(`/challenges/${id}/decline`, { method: 'POST' }),
   getActiveProjects: () => fetchWrapper('/projects/active'),
   getProjectProposals: () => fetchWrapper('/projects/proposals'),
   getStudentTeams: () => fetchWrapper('/teams'),

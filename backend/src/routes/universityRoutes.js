@@ -10,6 +10,8 @@ router.use(authorize('institution'));
 
 router.get('/stats', universityController.getUniversityStats);
 router.get('/challenges/assigned', universityController.getAssignedChallenges);
+router.post('/challenges/:id/accept', universityController.acceptChallenge);
+router.post('/challenges/:id/decline', universityController.declineChallenge);
 router.get('/projects/active', universityController.getActiveProjects);
 router.get('/projects/proposals', universityController.getProjectProposals);
 
